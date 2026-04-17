@@ -7,10 +7,11 @@ on:
         description: 'Log level'
         required: true
         default: 'info'
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  # disabled until correted to use iwasm
+  # push:
+  #   branches: [ main ]
+  # pull_request:
+  #   branches: [ main ]
 
 jobs:
   build:
