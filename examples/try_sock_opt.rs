@@ -1,4 +1,4 @@
-use wasmedge_wasi_socket::{
+use wamr_wasi_socket::{
     socket::{AddressFamily, Socket, SocketType},
     ToSocketAddrs,
 };

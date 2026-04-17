@@ -1,4 +1,4 @@
-use wasmedge_wasi_socket::UdpSocket;
+use wamr_wasi_socket::UdpSocket;
 
 fn main() -> std::io::Result<()> {
     let socket = UdpSocket::bind("0.0.0.0:3000").unwrap();

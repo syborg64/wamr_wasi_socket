@@ -1,7 +1,7 @@
 use std::io::{self, Read, Write};
 use std::vec;
-use wasmedge_wasi_socket::poll;
-use wasmedge_wasi_socket::{TcpListener, TcpStream};
+use wamr_wasi_socket::poll;
+use wamr_wasi_socket::{TcpListener, TcpStream};
 
 const DATA: &[u8] = b"Hello world!\n";
 

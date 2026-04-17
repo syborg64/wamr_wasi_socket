@@ -1,4 +1,4 @@
-use wasmedge_wasi_socket::UdpSocket;
+use wamr_wasi_socket::UdpSocket;
 
 fn main() -> std::io::Result<()> {
     let port = std::env::var("PORT").unwrap_or("3000".to_string());

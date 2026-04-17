@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 use std::net::SocketAddr;
-use wasmedge_wasi_socket::{Shutdown, TcpListener, TcpStream};
+use wamr_wasi_socket::{Shutdown, TcpListener, TcpStream};
 
 fn handle_client((mut stream, addr): (TcpStream, SocketAddr)) -> std::io::Result<()> {
     let local_addr = stream.local_addr()?;

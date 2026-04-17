@@ -35,6 +35,10 @@ name = "try_sock_opt"
 required-features = ["opt"]
 
 [[example]]
+name = "try_dns"
+required-features = ["opt"]
+
+[[example]]
 name = "udp_reverse"
 required-features = ["udp"]
 

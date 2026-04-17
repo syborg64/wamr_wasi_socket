@@ -1,5 +1,5 @@
 use http_req::request;
-use wasmedge_wasi_socket::nslookup;
+use wamr_wasi_socket::nslookup;
 
 fn main() -> std::io::Result<()> {
     // DNS query

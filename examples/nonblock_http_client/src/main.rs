@@ -1,7 +1,7 @@
 use httparse::{Response, EMPTY_HEADER};
 use std::io::{self, Read, Write};
 use std::str::from_utf8;
-use wasmedge_wasi_socket::TcpStream;
+use wamr_wasi_socket::TcpStream;
 
 fn main() {
     let req = "GET /get HTTP/1.0\n\n";

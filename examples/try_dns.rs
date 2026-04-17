@@ -1,4 +1,4 @@
-use wasmedge_wasi_socket::{resolve, Ipv4Addr, TcpStream};
+use wamr_wasi_socket::{resolve, Ipv4Addr, TcpStream};
 
 fn main() {
     let mut code = 0;

@@ -1,4 +1,4 @@
-use wasmedge_wasi_socket::{SocketAddr, ToSocketAddrs};
+use wamr_wasi_socket::{SocketAddr, ToSocketAddrs};
 
 fn main() -> std::io::Result<()> {
     // ip + port

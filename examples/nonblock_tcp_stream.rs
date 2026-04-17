@@ -1,7 +1,7 @@
 use std::io::{Read, Write};
 use std::thread::sleep;
 use std::time::Duration;
-use wasmedge_wasi_socket::{Shutdown, TcpStream};
+use wamr_wasi_socket::{Shutdown, TcpStream};
 
 fn main() -> std::io::Result<()> {
     let port = std::env::var("PORT").unwrap_or("1234".to_string());
