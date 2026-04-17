@@ -1,6 +1,6 @@
 [package]
 name = "wamr_wasi_socket"
-version = "0.0.0"
+version = "0.1.0"
 authors = ["Yi <yi@secondstate.io>", "J <julian.scott@gapfruit.com>" ]
 edition = "2021"
 license = "Apache-2.0"
