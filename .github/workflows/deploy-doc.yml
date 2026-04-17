@@ -21,7 +21,7 @@ jobs:
 
     - name: Build 🔧
       run: |
-        RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly rustdoc -p wasmedge_wasi_socket --target wasm32-wasi --lib
+        RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly rustdoc -p wamr_wasi_socket --target wasm32-wasi --lib
 
     - name: Deploy 🚀
       uses: JamesIves/github-pages-deploy-action@4.1.4

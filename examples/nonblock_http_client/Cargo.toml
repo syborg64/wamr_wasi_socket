@@ -7,5 +7,5 @@ authors = ["LI Rui <me@lirui.tech>"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wasmedge_wasi_socket = { path = "../../" }
+wamr_wasi_socket = { path = "../../" }
 httparse = "1.5"

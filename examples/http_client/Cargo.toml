@@ -9,4 +9,4 @@ exclude = ["server.py"]
 
 [dependencies]
 http_req_wasi  = "0.10"
-wasmedge_wasi_socket = {path = "../.."}
+wamr_wasi_socket = {path = "../.."}
