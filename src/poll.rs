@@ -1,5 +1,5 @@
 use crate::wasi_poll as poll;
-use std::os::wasi::prelude::*;
+use std::os::fd::{AsRawFd, RawFd};
 
 #[derive(Clone)]
 pub enum Subscription {
@@ -222,7 +222,7 @@ pub fn poll(subs: &[Subscription]) -> std::io::Result<Vec<Event>> {
 
                     if event.type_ == poll::EVENTTYPE_FD_READ {
                         events.push(Event {
-                            event_type:EventType::Read,
+                            event_type: EventType::Read,
                             userdata: event.userdata,
                         });
                     } else {
@@ -232,9 +232,9 @@ pub fn poll(subs: &[Subscription]) -> std::io::Result<Vec<Event>> {
                                 event_type: EventType::Error(e),
                                 userdata: event.userdata,
                             });
-                        }else{
+                        } else {
                             events.push(Event {
-                                event_type:EventType::Write,
+                                event_type: EventType::Write,
                                 userdata: event.userdata,
                             });
                         }

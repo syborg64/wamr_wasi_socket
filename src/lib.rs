@@ -11,6 +11,24 @@ use std::{
     os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd},
 };
 
+pub(crate) mod syscall {
+    macro_rules! syscall {
+        ($fn: ident ( $($arg: expr),* $(,)* ) ) => {{
+            #[allow(unused_unsafe)]
+            let res = unsafe { libc::$fn($($arg, )*) };
+            if res == -1 {
+                Err(std::io::Error::last_os_error())
+            } else {
+                Ok(res)
+            }
+        }};
+    }
+    pub(crate) use syscall;
+}
+
+#[allow(unused)]
+use syscall::syscall;
+
 #[derive(Debug)]
 pub struct TcpStream {
     s: socket::Socket,
@@ -59,28 +77,77 @@ impl AsFd for TcpListener {
     }
 }
 
-#[derive(Debug)]
-pub struct UdpSocket {
-    s: socket::Socket,
-}
+#[cfg(feature = "udp")]
+mod udp {
+    #[derive(Debug)]
+    pub struct UdpSocket {
+        s: socket::Socket,
+    }
 
-impl AsRef<socket::Socket> for UdpSocket {
-    fn as_ref(&self) -> &socket::Socket {
-        &self.s
+    impl AsRef<socket::Socket> for UdpSocket {
+        fn as_ref(&self) -> &socket::Socket {
+            &self.s
+        }
+    }
+
+    impl AsMut<socket::Socket> for UdpSocket {
+        fn as_mut(&mut self) -> &mut socket::Socket {
+            &mut self.s
+        }
+    }
+
+    impl AsFd for UdpSocket {
+        fn as_fd(&self) -> BorrowedFd<'_> {
+            unsafe { BorrowedFd::borrow_raw(self.as_raw_fd()) }
+        }
+    }
+
+    impl UdpSocket {
+        /// Create UDP socket and bind to the given address.
+        ///
+        /// If multiple address is given, the first successful socket is
+        /// returned.
+        pub fn bind<A: ToSocketAddrs>(addrs: A) -> io::Result<UdpSocket> {
+            let mut last_error = io::Error::from(io::ErrorKind::Other);
+            let addrs = addrs.to_socket_addrs()?;
+
+            let bind = |addrs| {
+                let addr_family = socket::AddressFamily::from(&addrs);
+                let s = socket::Socket::new(addr_family, socket::SocketType::Datagram)?;
+                s.bind(&addrs)?;
+                Ok(UdpSocket { s })
+            };
+
+            for addr in addrs {
+                match bind(addr) {
+                    Ok(udp) => return Ok(udp),
+                    Err(e) => last_error = e,
+                }
+            }
+
+            return Err(last_error);
+        }
+        pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
+            self.s.recv_from(buf)
+        }
+        pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A) -> io::Result<usize> {
+            let addr = addr.to_socket_addrs()?.next().ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::InvalidInput, "No address.")
+            })?;
+
+            self.s.send_to(buf, addr)
+        }
+    }
+
+    impl AsRawFd for UdpSocket {
+        fn as_raw_fd(&self) -> std::os::fd::RawFd {
+            self.s.as_raw_fd()
+        }
     }
 }
 
-impl AsMut<socket::Socket> for UdpSocket {
-    fn as_mut(&mut self) -> &mut socket::Socket {
-        &mut self.s
-    }
-}
-
-impl AsFd for UdpSocket {
-    fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw(self.as_raw_fd()) }
-    }
-}
+#[cfg(feature = "udp")]
+pub use udp::*;
 
 impl TcpStream {
     /// Create TCP socket and connect to the given address.
@@ -131,19 +198,19 @@ impl TcpStream {
 }
 
 impl AsRawFd for TcpStream {
-    fn as_raw_fd(&self) -> std::os::wasi::prelude::RawFd {
+    fn as_raw_fd(&self) -> std::os::fd::RawFd {
         self.s.as_raw_fd()
     }
 }
 
 impl IntoRawFd for TcpStream {
-    fn into_raw_fd(self) -> std::os::wasi::prelude::RawFd {
+    fn into_raw_fd(self) -> std::os::fd::RawFd {
         self.s.into_raw_fd()
     }
 }
 
 impl FromRawFd for TcpStream {
-    unsafe fn from_raw_fd(fd: std::os::wasi::prelude::RawFd) -> Self {
+    unsafe fn from_raw_fd(fd: std::os::fd::RawFd) -> Self {
         Self {
             s: socket::Socket::from_raw_fd(fd),
         }
@@ -198,6 +265,7 @@ impl TcpListener {
         let bind = |addrs, nonblocking| {
             let addr_family = socket::AddressFamily::from(&addrs);
             let s = socket::Socket::new(addr_family, socket::SocketType::Stream)?;
+            #[cfg(feature = "opt")]
             s.setsockopt(
                 socket::SocketOptLevel::SolSocket,
                 socket::SocketOptName::SoReuseaddr,
@@ -244,35 +312,25 @@ impl TcpListener {
 }
 
 impl AsRawFd for TcpListener {
-    fn as_raw_fd(&self) -> std::os::wasi::prelude::RawFd {
+    fn as_raw_fd(&self) -> std::os::fd::RawFd {
         self.s.as_raw_fd()
     }
 }
 
 impl IntoRawFd for TcpListener {
-    fn into_raw_fd(self) -> std::os::wasi::prelude::RawFd {
+    fn into_raw_fd(self) -> std::os::fd::RawFd {
         self.s.into_raw_fd()
     }
 }
 
 impl FromRawFd for TcpListener {
-    unsafe fn from_raw_fd(fd: std::os::wasi::prelude::RawFd) -> Self {
+    unsafe fn from_raw_fd(fd: std::os::fd::RawFd) -> Self {
         let s: socket::Socket = FromRawFd::from_raw_fd(fd);
-        match s.get_local() {
-            Ok(address) => {
-                let port = address.port();
-                TcpListener {
-                    s,
-                    address: Ok(address),
-                    port: Some(port),
-                }
-            }
-            Err(error) => TcpListener {
-                s,
-                address: Err(error),
-                port: None,
-            },
-        }
+        let address = s.get_local();
+
+        let port = address.as_ref().ok().map(|a| a.port());
+
+        TcpListener { s, address, port }
     }
 }
 
@@ -292,59 +350,22 @@ pub struct Incoming<'a> {
     listener: &'a TcpListener,
 }
 
-impl UdpSocket {
-    /// Create UDP socket and bind to the given address.
-    ///
-    /// If multiple address is given, the first successful socket is
-    /// returned.
-    pub fn bind<A: ToSocketAddrs>(addrs: A) -> io::Result<UdpSocket> {
-        let mut last_error = io::Error::from(io::ErrorKind::Other);
-        let addrs = addrs.to_socket_addrs()?;
-
-        let bind = |addrs| {
-            let addr_family = socket::AddressFamily::from(&addrs);
-            let s = socket::Socket::new(addr_family, socket::SocketType::Datagram)?;
-            s.bind(&addrs)?;
-            Ok(UdpSocket { s })
-        };
-
-        for addr in addrs {
-            match bind(addr) {
-                Ok(udp) => return Ok(udp),
-                Err(e) => last_error = e,
-            }
-        }
-
-        return Err(last_error);
-    }
-    pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        self.s.recv_from(buf)
-    }
-    pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A) -> io::Result<usize> {
-        let addr = addr
-            .to_socket_addrs()?
-            .next()
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "No address."))?;
-
-        self.s.send_to(buf, addr)
-    }
-}
-
-impl AsRawFd for UdpSocket {
-    fn as_raw_fd(&self) -> std::os::wasi::prelude::RawFd {
-        self.s.as_raw_fd()
-    }
-}
-
 pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
     let dns_server = std::env::var("DNS_SERVER");
     if let Ok(dns_server) = dns_server {
         nslookup_with_dns_server(&dns_server, node, service)
     } else {
-        nslookup_with_host(node, service)
+        #[cfg(feature = "addrinfo")]
+        return nslookup_with_host(node, service);
+        #[cfg(not(feature = "addrinfo"))]
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            "lookup with host not available on this platform",
+        ));
     }
 }
 
+#[cfg(feature = "addrinfo")]
 pub fn nslookup_with_host(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
     use socket::WasiAddrinfo;
     let hints: WasiAddrinfo = WasiAddrinfo::default();
@@ -399,9 +420,12 @@ pub fn nslookup_with_dns_server(
     _service: &str,
 ) -> std::io::Result<Vec<SocketAddr>> {
     let mut conn = TcpStream::connect(dns_server)?;
-    let timeout = std::time::Duration::from_secs(5);
-    let _ignore = conn.as_mut().set_send_timeout(Some(timeout));
-    let _ignore = conn.as_mut().set_recv_timeout(Some(timeout));
+    #[cfg(feature = "opt")]
+    {
+        let timeout = std::time::Duration::from_secs(5);
+        let _ignore = conn.as_mut().set_send_timeout(Some(timeout));
+        let _ignore = conn.as_mut().set_recv_timeout(Some(timeout));
+    }
 
     if node == "localhost" {
         return ("127.0.0.1", 0u16).to_socket_addrs().map(|v| v.collect());
