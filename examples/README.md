@@ -1,10 +1,10 @@
-# WasmEdge WASI Socket
+# WAMR WASI Socket
 
-Here are some examples for running network socket programs in WasmEdge. The applications are written in Rust.
+Here are some examples for running network socket programs in wasm-micro-runtime. The applications are written in Rust.
 
 ## Prerequisites
 
-You need to install [Rust](https://www.rust-lang.org/tools/install) and [WasmEdge](https://github.com/WasmEdge/WasmEdge/blob/master/docs/install.md) before you try to compile and run the following examples.
+You need to install [Rust](https://www.rust-lang.org/tools/install) and [iwasm](https://github.com/bytecodealliance/wasm-micro-runtime/tree/main/product-mini) before you try to compile and run the following examples.
 
 ## An HTTP client example
 
@@ -22,9 +22,9 @@ You need to install [Rust](https://www.rust-lang.org/tools/install) and [WasmEdg
 
 [See here](poll_http_server)
 
-## TCP Stream Example with WasmEdge
+## TCP Stream Example with WAMR
 
-This is a example of using WasmEdge as a socket client.
+This is a example of using WAMR as a socket client.
 
 ```
 cargo run --example tcp_stream
@@ -36,11 +36,10 @@ Set up a server on your localhost with [ncat](https://nmap.org/ncat).
 ncat -kvlp 1234
 ```
 
-Copy wasm into WasmEdge directory and run it. WasmEdge would send message "hello" to a server at `localhost:1234`.
+run the wasm with WAMR's iwasm. iwasm would send message "hello" to a server at `localhost:1234`.
 
 ```
-$ cp <path-to-wamr_wasi_socket>/target/wasm32-unknown-unknown/debug/examples/tcp_stream.wasm <path-to-wasmedge>
-$ ./wasmedge --env PORT=1234 ./tcp_stream.wasm
+$ iwasm --env PORT=1234 --addr-pool=127.0.0.1/32 <path-to-wamr_wasi_socket>/target/wasm32-unknown-unknown/debug/examples/tcp_stream.wasm
 connect to 127.0.0.1:1234
 sending hello message...
 ```
@@ -57,9 +56,9 @@ Ncat: Connection from 127.0.0.1:56366.
 hello
 ```
 
-## TCP Listener Example with WasmEdge
+## TCP Listener Example with WAMR
 
-This is a example of using wasmedge as a socket server.
+This is a example of using WAMR as a socket server.
 
 ```
 cargo run --example tcp_listener

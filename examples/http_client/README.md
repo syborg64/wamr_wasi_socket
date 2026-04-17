@@ -1,4 +1,4 @@
-# WasmEdge WASI Socket Http Client Demo
+# WAMR WASI Socket Http Client Demo
 
 ## Build
 
@@ -9,5 +9,5 @@ cargo build --target wasm32-wasi --release
 ## Run
 
 ```shell
-wasmedge target/wasm32-wasi/release/http_client.wasm
+iwasm --addr_pool=0.0.0.0/0 target/wasm32-wasi/release/http_client.wasm
 ```
