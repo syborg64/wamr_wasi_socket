@@ -24,9 +24,13 @@ rand = "0.10.1"
 default = []
 wasi_poll = []
 epoll = []
+# yet unimplemented set/get sockopt functions
 opt = []
+# untested readv / writev functions
 iov = []
+# udp sockets
 udp = ["iov"]
+# yet unimplemented socket_resolve functions 
 addrinfo = []
 
 

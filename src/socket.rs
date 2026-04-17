@@ -243,6 +243,8 @@ impl From<&SocketAddr> for net::SocketAddr {
 
 #[cfg(feature = "addrinfo")]
 pub mod addrinfo {
+    use super::*;
+
     #[repr(u16, align(2))]
     pub enum AiFlags {
         AiPassive,
@@ -299,7 +301,7 @@ pub mod addrinfo {
             service: &str,
             hints: &WasiAddrinfo,
             max_reslen: usize,
-            sockaddr: &mut Vec<WasiSockaddr>,
+            sockaddr: &mut Vec<SocketAddr>,
             sockbuff: &mut Vec<[u8; 26]>,
             ai_canonname: &mut Vec<String>,
         ) -> io::Result<Vec<WasiAddrinfo>> {
@@ -370,6 +372,7 @@ pub use addrinfo::*;
 
 #[cfg(feature = "iov")]
 pub mod iov {
+    use super::*;
 
     #[repr(C)]
     pub struct IovecRead {
@@ -406,6 +409,8 @@ pub use iov::*;
 
 #[cfg(feature = "opt")]
 pub mod opt {
+    use super::*;
+
     #[derive(Copy, Clone, Debug)]
     #[repr(u8, align(1))]
     pub enum SocketOptLevel {

@@ -78,7 +78,9 @@ impl AsFd for TcpListener {
 }
 
 #[cfg(feature = "udp")]
-mod udp {
+pub mod udp {
+    use super::*;
+
     #[derive(Debug)]
     pub struct UdpSocket {
         s: socket::Socket,
