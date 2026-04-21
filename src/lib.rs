@@ -23,6 +23,20 @@ pub(crate) mod syscall {
             }
         }};
     }
+
+    #[allow(unused)]
+    macro_rules! mysyscall {
+        ($fn: ident ( $($arg: expr),* $(,)* ) ) => {{
+            let res = unsafe { $fn($($arg, )*) };
+            if res == -1 {
+                Err(std::io::Error::last_os_error())
+            } else {
+                Ok(res)
+            }
+        }};
+    }
+    #[allow(unused)]
+    pub(crate) use mysyscall;
     pub(crate) use syscall;
 }
 
@@ -268,11 +282,7 @@ impl TcpListener {
             let addr_family = socket::AddressFamily::from(&addrs);
             let s = socket::Socket::new(addr_family, socket::SocketType::Stream)?;
             #[cfg(feature = "opt")]
-            s.setsockopt(
-                socket::SocketOptLevel::SolSocket,
-                socket::SocketOptName::SoReuseaddr,
-                1i32,
-            )?;
+            s.set_reuse_addr(true)?;
             s.bind(&addrs)?;
             s.listen(128)?;
             s.set_nonblocking(nonblocking)?;

@@ -18,10 +18,10 @@ path = "src/lib.rs"
 libc = "0.2.3"
 
 [features]
-default = []
+default = ["opt"]
 wasi_poll = []
 epoll = []
-# yet unimplemented set/get sockopt functions
+# set/get sockopt functions
 opt = []
 # untested readv / writev functions
 iov = []

@@ -106,6 +106,12 @@ pub enum SocketAddr {
     V6(SocketAddrV6),
 }
 
+impl Default for SocketAddr {
+    fn default() -> Self {
+        Self::V4((&net::SocketAddrV4::new(net::Ipv4Addr::UNSPECIFIED, 0)).into())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::{SocketAddr, SocketAddrV6};
@@ -579,23 +585,131 @@ mod wasi_sock {
         pub fn sock_addr_local(fd: i32, addr: *mut SocketAddr) -> i32;
 
         #[cfg(feature = "opt")]
-        pub fn sock_getsockopt(
-            fd: i32,
-            level: i32,
-            name: i32,
-            flag: *mut i32,
-            flag_size: *mut u32,
-        ) -> i32;
+        pub fn sock_get_broadcast(fd: i32, opt: *mut bool) -> i32;
 
-        #[allow(unused)]
         #[cfg(feature = "opt")]
-        pub fn sock_setsockopt(
-            fd: i32,
-            level: i32,
-            name: i32,
-            flag: *const i32,
-            flag_size: u32,
-        ) -> i32;
+        pub fn sock_get_keep_alive(fd: i32, opt: *mut bool) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_get_linger(fd: i32, is_linger: *mut bool, linger_s: *mut i32) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_get_recv_buf_size(fd: i32, opt: *mut u32) -> i32;
+
+        /// rare u64 !
+        /// this actually differs from the libc timeval struct
+        /// uses microseconds directly
+        #[cfg(feature = "opt")]
+        pub fn sock_get_recv_timeout(fd: i32, timeouts_us: *mut u64) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_get_reuse_addr(fd: i32, opt: *mut bool) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_get_reuse_port(fd: i32, opt: *mut bool) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_get_send_buf_size(fd: i32, opt: *mut u32) -> i32;
+
+        /// rare u64 !
+        /// this actually differs from the libc timeval struct
+        /// uses microseconds directly
+        #[cfg(feature = "opt")]
+        pub fn sock_get_send_timeout(fd: i32, timeout_us: *mut u64) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_get_tcp_fastopen_connect(fd: i32, opt: *mut bool) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_get_tcp_keep_idle(fd: i32, opt: *mut u32) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_get_tcp_keep_intvl(fd: i32, opt: *mut u32) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_get_tcp_no_delay(fd: i32, opt: *mut bool) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_get_tcp_quick_ack(fd: i32, opt: *mut bool) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_get_ip_multicast_loop(fd: i32, is_ipv6: bool, opt: *mut bool) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_get_ip_multicast_ttl(fd: i32, ttl: *mut u32) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_get_ip_ttl(fd: i32, ttl: *mut u32) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_get_ipv6_only(fd: i32, opt: *mut bool) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_broadcast(fd: i32, opt: bool) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_keep_alive(fd: i32, opt: bool) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_linger(fd: i32, is_linger: bool, linger_s: i32) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_recv_buf_size(fd: i32, opt: u32) -> i32;
+
+        /// rare u64 !
+        /// this actually differs from the libc timeval struct
+        /// uses microseconds directly
+        #[cfg(feature = "opt")]
+        pub fn sock_set_recv_timeout(fd: i32, timeout_us: u64) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_reuse_addr(fd: i32, opt: bool) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_reuse_port(fd: i32, opt: bool) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_send_buf_size(fd: i32, opt: u32) -> i32;
+
+        /// rare u64 !
+        /// this actually differs from the libc timeval struct
+        /// uses microseconds directly
+        #[cfg(feature = "opt")]
+        pub fn sock_set_send_timeout(fd: i32, timeout_us: u64) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_tcp_fastopen_connect(fd: i32, opt: bool) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_tcp_keep_idle(fd: i32, opt: u32) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_tcp_keep_intvl(fd: i32, opt: u32) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_tcp_no_delay(fd: i32, opt: bool) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_tcp_quick_ack(fd: i32, opt: bool) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_ip_multicast_loop(fd: i32, ipv6: bool, opt: bool) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_ip_multicast_ttl(fd: i32, opt: u32) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_ip_add_membership(fd: i32, addr: *const SocketAddr, interface: u32) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_ip_drop_membership(fd: i32, addr: *const SocketAddr, interface: u32)
+            -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_ip_ttl(fd: i32, opt: u32) -> i32;
+
+        #[cfg(feature = "opt")]
+        pub fn sock_set_ipv6_only(fd: i32, opt: bool) -> i32;
     }
 }
 
@@ -606,6 +720,8 @@ pub struct Socket {
 
 use wasi_sock::*;
 
+#[cfg(feature = "opt")]
+use crate::syscall::mysyscall;
 use crate::syscall::syscall;
 
 impl Socket {
@@ -640,177 +756,353 @@ impl Socket {
     }
 }
 
-#[cfg(feature = "iov")]
+#[cfg(feature = "opt")]
 use std::time::Duration;
 
-#[cfg(feature = "iov")]
-fn into_timeval(duration: Option<Duration>) -> libc::timeval {
-    match duration {
-        // https://github.com/rust-lang/libc/issues/1848
-        #[cfg_attr(target_env = "musl", allow(deprecated))]
-        Some(duration) => libc::timeval {
-            tv_sec: duration.as_secs().min(libc::time_t::max_value() as u64) as libc::time_t,
-            tv_usec: duration.subsec_micros() as libc::suseconds_t,
-        },
-        None => libc::timeval {
-            tv_sec: 0,
-            tv_usec: 0,
-        },
-    }
-}
+#[cfg(feature = "opt")]
+impl Socket {
+    // pub fn device(&self) -> io::Result<Option<Vec<u8>>> {
+    //     let mut buf: [MaybeUninit<u8>; 0x10] = unsafe { MaybeUninit::uninit().assume_init() };
+    //     let mut len = buf.len() as u32;
+    //     let e = unsafe {
+    //         sock_getsockopt(
+    //             self.fd,
+    //             SocketOptLevel::SolSocket as i32,
+    //             SocketOptName::SoBindToDevice as i32,
+    //             &mut buf as *mut _ as *mut i32,
+    //             &mut len,
+    //         )
+    //     };
 
-#[cfg(feature = "iov")]
-fn from_timeval(duration: libc::timeval) -> Option<Duration> {
-    if duration.tv_sec == 0 && duration.tv_usec == 0 {
-        None
-    } else {
-        let sec = duration.tv_sec as u64;
-        let nsec = (duration.tv_usec as u32) * 1000;
-        Some(Duration::new(sec, nsec))
+    //     if e == 0 {
+    //         if len == 0 {
+    //             Ok(None)
+    //         } else {
+    //             let buf = &buf[..len as usize - 1];
+    //             // TODO: use `MaybeUninit::slice_assume_init_ref` once stable.
+    //             Ok(Some(unsafe { &*(buf as *const [_] as *const [u8]) }.into()))
+    //         }
+    //     } else {
+    //         Err(io::Error::from_raw_os_error(e as i32))
+    //     }
+    // }
+
+    // pub fn bind_device(&self, interface: Option<&[u8]>) -> io::Result<()> {
+    //     let (value, len) = if let Some(interface) = interface {
+    //         (interface.as_ptr(), interface.len())
+    //     } else {
+    //         (std::ptr::null(), 0)
+    //     };
+
+    //     unsafe {
+    //         let e = sock_setsockopt(
+    //             self.fd,
+    //             SocketOptLevel::SolSocket as u8 as i32,
+    //             SocketOptName::SoBindToDevice as u8 as i32,
+    //             value as *const i32,
+    //             len as u32,
+    //         );
+    //         if e == 0 {
+    //             Ok(())
+    //         } else {
+    //             Err(io::Error::from_raw_os_error(e as i32))
+    //         }
+    //     }
+    // }
+
+    pub fn broadcast(&self) -> io::Result<bool> {
+        let mut broadcast = MaybeUninit::<bool>::zeroed();
+        mysyscall!(sock_get_broadcast(self.as_raw_fd(), broadcast.as_mut_ptr()))?;
+        Ok(unsafe { broadcast.assume_init() })
+    }
+
+    pub fn keep_alive(&self) -> io::Result<bool> {
+        let mut keep_alive = MaybeUninit::<bool>::zeroed();
+        mysyscall!(sock_get_keep_alive(
+            self.as_raw_fd(),
+            keep_alive.as_mut_ptr()
+        ))?;
+        Ok(unsafe { keep_alive.assume_init() })
+    }
+
+    pub fn linger(&self) -> io::Result<Option<Duration>> {
+        let mut is_linger = MaybeUninit::<bool>::zeroed();
+        let mut duration = MaybeUninit::<i32>::zeroed();
+        mysyscall!(sock_get_linger(
+            self.as_raw_fd(),
+            is_linger.as_mut_ptr(),
+            duration.as_mut_ptr()
+        ))?;
+        if unsafe { is_linger.assume_init() } {
+            Ok(Some(Duration::from_secs(
+                unsafe { duration.assume_init() } as _
+            )))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn recv_buf_size(&self) -> io::Result<u32> {
+        let mut size = MaybeUninit::<u32>::zeroed();
+        mysyscall!(sock_get_recv_buf_size(self.as_raw_fd(), size.as_mut_ptr()))?;
+        Ok(unsafe { size.assume_init() })
+    }
+
+    pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
+        let mut timeout = MaybeUninit::<u64>::zeroed(); // rare u64 !
+        mysyscall!(sock_get_recv_timeout(
+            self.as_raw_fd(),
+            timeout.as_mut_ptr()
+        ))?;
+        let timeout = unsafe { timeout.assume_init() };
+        if timeout != 0 {
+            Ok(Some(Duration::from_micros(timeout)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn reuse_addr(&self) -> io::Result<bool> {
+        let mut reuse_addr = MaybeUninit::<bool>::zeroed();
+        mysyscall!(sock_get_reuse_addr(
+            self.as_raw_fd(),
+            reuse_addr.as_mut_ptr()
+        ))?;
+        Ok(unsafe { reuse_addr.assume_init() })
+    }
+
+    pub fn reuse_port(&self) -> io::Result<bool> {
+        let mut reuse_port = MaybeUninit::<bool>::zeroed();
+        mysyscall!(sock_get_reuse_port(
+            self.as_raw_fd(),
+            reuse_port.as_mut_ptr()
+        ))?;
+        Ok(unsafe { reuse_port.assume_init() })
+    }
+
+    pub fn send_buf_size(&self) -> io::Result<u32> {
+        let mut size = MaybeUninit::<u32>::zeroed();
+        mysyscall!(sock_get_send_buf_size(self.as_raw_fd(), size.as_mut_ptr()))?;
+        Ok(unsafe { size.assume_init() })
+    }
+
+    pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
+        let mut timeout = MaybeUninit::<u64>::zeroed(); // rare u64 !
+        mysyscall!(sock_get_send_timeout(
+            self.as_raw_fd(),
+            timeout.as_mut_ptr()
+        ))?;
+        let timeout = unsafe { timeout.assume_init() };
+        if timeout != 0 {
+            Ok(Some(Duration::from_micros(timeout)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn tcp_fastopen_connect(&self) -> io::Result<bool> {
+        let mut opt = MaybeUninit::<bool>::zeroed();
+        mysyscall!(sock_get_tcp_fastopen_connect(
+            self.as_raw_fd(),
+            opt.as_mut_ptr()
+        ))?;
+        Ok(unsafe { opt.assume_init() })
+    }
+
+    pub fn tcp_keep_idle(&self) -> io::Result<Duration> {
+        let mut keep_idle = MaybeUninit::<u32>::zeroed();
+        mysyscall!(sock_get_tcp_keep_idle(
+            self.as_raw_fd(),
+            keep_idle.as_mut_ptr()
+        ))?;
+        Ok(unsafe { Duration::from_secs(keep_idle.assume_init() as _) })
+    }
+
+    pub fn tcp_keep_intvl(&self) -> io::Result<Duration> {
+        let mut keep_intvl = MaybeUninit::<u32>::zeroed();
+        mysyscall!(sock_get_tcp_keep_intvl(
+            self.as_raw_fd(),
+            keep_intvl.as_mut_ptr()
+        ))?;
+        Ok(unsafe { Duration::from_secs(keep_intvl.assume_init() as _) })
+    }
+
+    pub fn tcp_no_delay(&self) -> io::Result<bool> {
+        let mut no_delay = MaybeUninit::<bool>::zeroed();
+        mysyscall!(sock_get_tcp_no_delay(
+            self.as_raw_fd(),
+            no_delay.as_mut_ptr()
+        ))?;
+        Ok(unsafe { no_delay.assume_init() })
+    }
+
+    pub fn tcp_quick_ack(&self) -> io::Result<bool> {
+        let mut quick_ack = MaybeUninit::<bool>::zeroed();
+        mysyscall!(sock_get_tcp_quick_ack(
+            self.as_raw_fd(),
+            quick_ack.as_mut_ptr()
+        ))?;
+        Ok(unsafe { quick_ack.assume_init() })
+    }
+
+    pub fn ip_multicast_loop(&self, ipv6: bool) -> io::Result<bool> {
+        let mut opt = MaybeUninit::<bool>::zeroed();
+        mysyscall!(sock_get_ip_multicast_loop(
+            self.as_raw_fd(),
+            ipv6,
+            opt.as_mut_ptr()
+        ))?;
+        Ok(unsafe { opt.assume_init() })
+    }
+
+    pub fn ip_multicast_ttl(&self) -> io::Result<u32> {
+        let mut ttl = MaybeUninit::<u32>::zeroed();
+        mysyscall!(sock_get_ip_multicast_ttl(
+            self.as_raw_fd(),
+            ttl.as_mut_ptr()
+        ))?;
+        Ok(unsafe { ttl.assume_init() })
+    }
+
+    pub fn ip_ttl(&self) -> io::Result<u32> {
+        let mut ttl = MaybeUninit::<u32>::zeroed();
+        mysyscall!(sock_get_ip_ttl(self.as_raw_fd(), ttl.as_mut_ptr()))?;
+        Ok(unsafe { ttl.assume_init() })
+    }
+
+    pub fn ipv6_only(&self) -> io::Result<bool> {
+        let mut ipv6 = MaybeUninit::<bool>::zeroed();
+        mysyscall!(sock_get_ipv6_only(self.as_raw_fd(), ipv6.as_mut_ptr()))?;
+        Ok(unsafe { ipv6.assume_init() })
+    }
+
+    pub fn set_broadcast(&self, opt: bool) -> io::Result<()> {
+        mysyscall!(sock_set_broadcast(self.as_raw_fd(), opt))?;
+        Ok(())
+    }
+
+    pub fn set_keep_alive(&self, opt: bool) -> io::Result<()> {
+        mysyscall!(sock_set_keep_alive(self.as_raw_fd(), opt))?;
+        Ok(())
+    }
+
+    /// be advised that [`Duration`] here is truncated into whole seconds
+    pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
+        let linger_s = linger.unwrap_or_default().as_secs();
+        mysyscall!(sock_set_linger(
+            self.as_raw_fd(),
+            linger.is_some(),
+            linger_s as i32
+        ))?;
+        Ok(())
+    }
+
+    /// be advised that [`usize`] here is truncated into a wasi native size_t: u32
+    pub fn set_recv_buf_size(&self, opt: usize) -> io::Result<()> {
+        mysyscall!(sock_set_recv_buf_size(self.as_raw_fd(), opt as u32))?;
+        Ok(())
+    }
+
+    pub fn set_read_timeout(&self, opt: Option<Duration>) -> io::Result<()> {
+        let timeout = opt.unwrap_or_default().as_micros() as u64;
+        mysyscall!(sock_set_recv_timeout(self.as_raw_fd(), timeout))?;
+        Ok(())
+    }
+
+    pub fn set_reuse_addr(&self, opt: bool) -> io::Result<()> {
+        mysyscall!(sock_set_reuse_addr(self.as_raw_fd(), opt))?;
+        Ok(())
+    }
+
+    pub fn set_reuse_port(&self, opt: bool) -> io::Result<()> {
+        mysyscall!(sock_set_reuse_port(self.as_raw_fd(), opt))?;
+        Ok(())
+    }
+
+    /// be advised that [`usize`] here is truncated into a wasi native size_t: u32
+    pub fn set_send_buf_size(&self, opt: usize) -> io::Result<()> {
+        mysyscall!(sock_set_send_buf_size(self.as_raw_fd(), opt as u32))?;
+        Ok(())
+    }
+
+    pub fn set_write_timeout(&self, opt: Option<Duration>) -> io::Result<()> {
+        let timeout = opt.unwrap_or_default().as_micros() as u64;
+        mysyscall!(sock_set_send_timeout(self.as_raw_fd(), timeout))?;
+        Ok(())
+    }
+
+    pub fn set_tcp_fastopen_connect(&self, opt: bool) -> io::Result<()> {
+        mysyscall!(sock_set_tcp_fastopen_connect(self.as_raw_fd(), opt))?;
+        Ok(())
+    }
+
+    /// be advised that [`Duration`] here is truncated into whole seconds
+    pub fn set_tcp_keep_idle(&self, opt: Duration) -> io::Result<()> {
+        let timeout = opt.as_secs() as u32;
+        mysyscall!(sock_set_tcp_keep_idle(self.as_raw_fd(), timeout))?;
+        Ok(())
+    }
+
+    /// be advised that [`Duration`] here is truncated into whole seconds
+    pub fn set_tcp_keep_intvl(&self, opt: Duration) -> io::Result<()> {
+        let timeout = opt.as_secs() as u32;
+        mysyscall!(sock_set_tcp_keep_intvl(self.as_raw_fd(), timeout))?;
+        Ok(())
+    }
+
+    pub fn set_tcp_no_delay(&self, opt: bool) -> io::Result<()> {
+        mysyscall!(sock_set_tcp_no_delay(self.as_raw_fd(), opt))?;
+        Ok(())
+    }
+
+    pub fn set_tcp_quick_ack(&self, opt: bool) -> io::Result<()> {
+        mysyscall!(sock_set_tcp_quick_ack(self.as_raw_fd(), opt))?;
+        Ok(())
+    }
+
+    pub fn set_ip_multicast_loop(&self, ipv6: bool, opt: bool) -> io::Result<()> {
+        mysyscall!(sock_set_ip_multicast_loop(self.as_raw_fd(), ipv6, opt))?;
+        Ok(())
+    }
+
+    pub fn set_ip_multicast_ttl(&self, opt: u32) -> io::Result<()> {
+        mysyscall!(sock_set_ip_multicast_ttl(self.as_raw_fd(), opt))?;
+        Ok(())
+    }
+
+    pub fn set_ip_add_membership(&self, addr: &net::SocketAddr, interface: u32) -> io::Result<()> {
+        let addr: SocketAddr = addr.into();
+        mysyscall!(sock_set_ip_add_membership(
+            self.as_raw_fd(),
+            &addr as *const SocketAddr,
+            interface
+        ))?;
+        Ok(())
+    }
+
+    pub fn set_ip_drop_membership(&self, addr: &net::SocketAddr, interface: u32) -> io::Result<()> {
+        let addr: SocketAddr = addr.into();
+        mysyscall!(sock_set_ip_drop_membership(
+            self.as_raw_fd(),
+            &addr as *const SocketAddr,
+            interface
+        ))?;
+        Ok(())
+    }
+
+    pub fn set_ip_ttl(&self, opt: u32) -> io::Result<()> {
+        mysyscall!(sock_set_ip_ttl(self.as_raw_fd(), opt))?;
+        Ok(())
+    }
+
+    pub fn set_ipv6_only(&self, opt: bool) -> io::Result<()> {
+        mysyscall!(sock_set_ipv6_only(self.as_raw_fd(), opt))?;
+        Ok(())
     }
 }
 
 #[cfg(feature = "iov")]
 impl Socket {
-    pub fn device(&self) -> io::Result<Option<Vec<u8>>> {
-        let mut buf: [MaybeUninit<u8>; 0x10] = unsafe { MaybeUninit::uninit().assume_init() };
-        let mut len = buf.len() as u32;
-        let e = unsafe {
-            sock_getsockopt(
-                self.fd,
-                SocketOptLevel::SolSocket as i32,
-                SocketOptName::SoBindToDevice as i32,
-                &mut buf as *mut _ as *mut i32,
-                &mut len,
-            )
-        };
-
-        if e == 0 {
-            if len == 0 {
-                Ok(None)
-            } else {
-                let buf = &buf[..len as usize - 1];
-                // TODO: use `MaybeUninit::slice_assume_init_ref` once stable.
-                Ok(Some(unsafe { &*(buf as *const [_] as *const [u8]) }.into()))
-            }
-        } else {
-            Err(io::Error::from_raw_os_error(e as i32))
-        }
-    }
-
-    pub fn bind_device(&self, interface: Option<&[u8]>) -> io::Result<()> {
-        let (value, len) = if let Some(interface) = interface {
-            (interface.as_ptr(), interface.len())
-        } else {
-            (std::ptr::null(), 0)
-        };
-
-        unsafe {
-            let e = sock_setsockopt(
-                self.fd,
-                SocketOptLevel::SolSocket as u8 as i32,
-                SocketOptName::SoBindToDevice as u8 as i32,
-                value as *const i32,
-                len as u32,
-            );
-            if e == 0 {
-                Ok(())
-            } else {
-                Err(io::Error::from_raw_os_error(e as i32))
-            }
-        }
-    }
-
-    pub fn set_send_timeout(&self, duration: Option<Duration>) -> io::Result<()> {
-        self.setsockopt(
-            SocketOptLevel::SolSocket,
-            SocketOptName::SoSndtimeo,
-            into_timeval(duration),
-        )
-    }
-
-    pub fn get_send_timeout(&self) -> io::Result<Option<Duration>> {
-        unsafe {
-            let fd = self.fd;
-            let mut payload: MaybeUninit<libc::timeval> = MaybeUninit::uninit();
-            let mut len = std::mem::size_of::<libc::timeval>() as u32;
-
-            let e = sock_getsockopt(
-                fd,
-                SocketOptLevel::SolSocket as i32,
-                SocketOptName::SoSndtimeo as i32,
-                payload.as_mut_ptr().cast(),
-                &mut len,
-            );
-
-            if e == 0 {
-                Ok(from_timeval(payload.assume_init()))
-            } else {
-                Err(io::Error::from_raw_os_error(e as i32))
-            }
-        }
-    }
-
-    pub fn set_recv_timeout(&self, duration: Option<std::time::Duration>) -> io::Result<()> {
-        self.setsockopt(
-            SocketOptLevel::SolSocket,
-            SocketOptName::SoRcvtimeo,
-            into_timeval(duration),
-        )
-    }
-
-    pub fn get_recv_timeout(&self) -> io::Result<Option<Duration>> {
-        unsafe {
-            let fd = self.fd;
-            let mut payload: MaybeUninit<libc::timeval> = MaybeUninit::uninit();
-            let mut len = std::mem::size_of::<libc::timeval>() as u32;
-
-            let e = sock_getsockopt(
-                fd,
-                SocketOptLevel::SolSocket as i32,
-                SocketOptName::SoRcvtimeo as i32,
-                payload.as_mut_ptr().cast(),
-                &mut len,
-            );
-
-            if e == 0 {
-                Ok(from_timeval(payload.assume_init()))
-            } else {
-                Err(io::Error::from_raw_os_error(e as i32))
-            }
-        }
-    }
-}
-
-#[cfg(feature = "iov")]
-impl Socket {
-    pub fn send_vectored(&self, bufs: &[io::IoSlice<'_>], flags: u16) -> io::Result<usize> {
-        unsafe {
-            let mut send_len: u32 = 0;
-
-            let mut write_bufs = Vec::with_capacity(bufs.len());
-            for b in bufs {
-                write_bufs.push(IovecWrite {
-                    buf: b.as_ptr().cast(),
-                    size: b.len(),
-                });
-            }
-
-            let res = sock_send(
-                self.as_raw_fd() as u32,
-                write_bufs.as_ptr(),
-                write_bufs.len() as u32,
-                flags,
-                &mut send_len,
-            );
-            if res == 0 {
-                Ok(send_len as usize)
-            } else {
-                Err(io::Error::from_raw_os_error(res))
-            }
-        }
-    }
-
     pub fn send_to(&self, buf: &[u8], addr: SocketAddr) -> io::Result<usize> {
         let addr = (&addr).into();
 
@@ -1206,190 +1498,71 @@ impl Socket {
 
 #[cfg(feature = "opt")]
 impl Socket {
-    pub fn take_error(&self) -> io::Result<()> {
-        unsafe {
-            let fd = self.fd;
-            let mut error = 0;
-            let mut len = std::mem::size_of::<i32>() as u32;
-            let res = sock_getsockopt(
-                fd,
-                SocketOptLevel::SolSocket as i32,
-                SocketOptName::SoError as i32,
-                &mut error,
-                &mut len,
-            );
-            if res == 0 && error == 0 {
-                Ok(())
-            } else if res == 0 && error != 0 {
-                Err(io::Error::from_raw_os_error(error))
-            } else {
-                Err(io::Error::from_raw_os_error(res))
-            }
-        }
-    }
+    // pub fn take_error(&self) -> io::Result<()> {
+    //     unsafe {
+    //         let fd = self.fd;
+    //         let mut error = 0;
+    //         let mut len = std::mem::size_of::<i32>() as u32;
+    //         let res = sock_getsockopt(
+    //             fd,
+    //             SocketOptLevel::SolSocket as i32,
+    //             SocketOptName::SoError as i32,
+    //             &mut error,
+    //             &mut len,
+    //         );
+    //         if res == 0 && error == 0 {
+    //             Ok(())
+    //         } else if res == 0 && error != 0 {
+    //             Err(io::Error::from_raw_os_error(error))
+    //         } else {
+    //             Err(io::Error::from_raw_os_error(res))
+    //         }
+    //     }
+    // }
 
-    pub fn is_listener(&self) -> io::Result<bool> {
-        unsafe {
-            let fd = self.fd;
-            let mut val = 0;
-            let mut len = std::mem::size_of::<i32>() as u32;
-            let res = sock_getsockopt(
-                fd as i32,
-                SocketOptLevel::SolSocket as i32,
-                SocketOptName::SoAcceptconn as i32,
-                &mut val,
-                &mut len,
-            );
-            if res != 0 {
-                Err(io::Error::from_raw_os_error(res))
-            } else {
-                Ok(val != 0)
-            }
-        }
-    }
+    // pub fn is_listener(&self) -> io::Result<bool> {
+    //     unsafe {
+    //         let fd = self.fd;
+    //         let mut val = 0;
+    //         let mut len = std::mem::size_of::<i32>() as u32;
+    //         let res = sock_getsockopt(
+    //             fd as i32,
+    //             SocketOptLevel::SolSocket as i32,
+    //             SocketOptName::SoAcceptconn as i32,
+    //             &mut val,
+    //             &mut len,
+    //         );
+    //         if res != 0 {
+    //             Err(io::Error::from_raw_os_error(res))
+    //         } else {
+    //             Ok(val != 0)
+    //         }
+    //     }
+    // }
 
-    pub fn r#type(&self) -> io::Result<SocketType> {
-        unsafe {
-            let fd = self.fd;
-            let mut val = 0;
-            let mut len = std::mem::size_of::<i32>() as u32;
-            let res = sock_getsockopt(
-                fd as u32,
-                SocketOptLevel::SolSocket as i32,
-                SocketOptName::SoType as i32,
-                &mut val,
-                &mut len,
-            );
-            if res != 0 {
-                Err(io::Error::from_raw_os_error(res))
-            } else {
-                match val {
-                    1 => Ok(SocketType::Datagram),
-                    2 => Ok(SocketType::Stream),
-                    _ => Err(io::Error::from_raw_os_error(libc::EINVAL)),
-                }
-            }
-        }
-    }
-
-    pub fn broadcast(&self) -> io::Result<bool> {
-        unsafe {
-            let fd = self.fd;
-            let mut val = 0;
-            let mut len = std::mem::size_of::<i32>() as u32;
-            let res = sock_getsockopt(
-                fd as u32,
-                SocketOptLevel::SolSocket as i32,
-                SocketOptName::SoBroadcast as i32,
-                &mut val,
-                &mut len,
-            );
-            if res != 0 {
-                Err(io::Error::from_raw_os_error(res))
-            } else {
-                Ok(val != 0)
-            }
-        }
-    }
-
-    pub fn keepalive(&self) -> io::Result<bool> {
-        unsafe {
-            let fd = self.fd;
-            let mut val = 0;
-            let mut len = std::mem::size_of::<i32>() as u32;
-            let res = sock_getsockopt(
-                fd as u32,
-                SocketOptLevel::SolSocket as i32,
-                SocketOptName::SoKeepalive as i32,
-                &mut val,
-                &mut len,
-            );
-            if res != 0 {
-                Err(io::Error::from_raw_os_error(res))
-            } else {
-                Ok(val != 0)
-            }
-        }
-    }
-
-    pub fn recv_buffer_size(&self) -> io::Result<usize> {
-        unsafe {
-            let fd = self.fd;
-            let mut val = 0;
-            let mut len = std::mem::size_of::<i32>() as u32;
-            let res = sock_getsockopt(
-                fd as u32,
-                SocketOptLevel::SolSocket as i32,
-                SocketOptName::SoRcvbuf as i32,
-                &mut val,
-                &mut len,
-            );
-            if res != 0 {
-                Err(io::Error::from_raw_os_error(res))
-            } else {
-                Ok(val as usize)
-            }
-        }
-    }
-
-    pub fn send_buffer_size(&self) -> io::Result<usize> {
-        unsafe {
-            let fd = self.fd;
-            let mut val = 0;
-            let mut len = std::mem::size_of::<i32>() as u32;
-            let res = sock_getsockopt(
-                fd as u32,
-                SocketOptLevel::SolSocket as i32,
-                SocketOptName::SoSndbuf as i32,
-                &mut val,
-                &mut len,
-            );
-            if res != 0 {
-                Err(io::Error::from_raw_os_error(res))
-            } else {
-                Ok(val as usize)
-            }
-        }
-    }
-
-    pub fn reuse_address(&self) -> io::Result<bool> {
-        unsafe {
-            let fd = self.fd;
-            let mut val = 0;
-            let mut len = std::mem::size_of::<i32>() as u32;
-            let res = sock_getsockopt(
-                fd as u32,
-                SocketOptLevel::SolSocket as i32,
-                SocketOptName::SoReuseaddr as i32,
-                &mut val,
-                &mut len,
-            );
-            if res != 0 {
-                Err(io::Error::from_raw_os_error(res))
-            } else {
-                Ok(val != 0)
-            }
-        }
-    }
-
-    pub fn setsockopt<T>(
-        &self,
-        level: SocketOptLevel,
-        name: SocketOptName,
-        payload: T,
-    ) -> io::Result<()> {
-        unsafe {
-            let fd = self.fd as u32;
-            let flag = &payload as *const T as *const i32;
-            let flag_size = std::mem::size_of::<T>() as u32;
-            let e = sock_setsockopt(fd, level as u8 as i32, name as u8 as i32, flag, flag_size);
-            if e == 0 {
-                Ok(())
-            } else {
-                Err(io::Error::from_raw_os_error(e as i32))
-            }
-        }
-    }
+    // pub fn r#type(&self) -> io::Result<SocketType> {
+    //     unsafe {
+    //         let fd = self.fd;
+    //         let mut val = 0;
+    //         let mut len = std::mem::size_of::<i32>() as u32;
+    //         let res = sock_getsockopt(
+    //             fd as u32,
+    //             SocketOptLevel::SolSocket as i32,
+    //             SocketOptName::SoType as i32,
+    //             &mut val,
+    //             &mut len,
+    //         );
+    //         if res != 0 {
+    //             Err(io::Error::from_raw_os_error(res))
+    //         } else {
+    //             match val {
+    //                 1 => Ok(SocketType::Datagram),
+    //                 2 => Ok(SocketType::Stream),
+    //                 _ => Err(io::Error::from_raw_os_error(libc::EINVAL)),
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 impl Drop for Socket {

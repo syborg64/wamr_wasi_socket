@@ -7,7 +7,7 @@ fn main() {
         println!("resolve {name}");
         let conn = TcpStream::connect("127.0.0.1:8000").unwrap();
         conn.as_ref()
-            .set_recv_timeout(Some(std::time::Duration::from_secs(3)))
+            .set_read_timeout(Some(std::time::Duration::from_secs(3)))
             .unwrap();
 
         match name.to_socket_addrs() {
