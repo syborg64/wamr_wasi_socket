@@ -516,9 +516,9 @@ pub const FDFLAG_RSYNC: u16 = 0x0008; // __FDFLAG_RSYNC
 pub const FDFLAG_SYNC: u16 = 0x0010; // __FDFLAG_SYNC
 
 mod wasi_sock {
+    use super::SocketAddr;
     #[cfg(feature = "iov")]
     use super::{IovecRead, IovecWrite};
-    use super::SocketAddr;
 
     #[link(wasm_import_module = "wasi_snapshot_preview1")]
     extern "C" {
