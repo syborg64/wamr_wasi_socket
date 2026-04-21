@@ -18,7 +18,7 @@ path = "src/lib.rs"
 libc = "0.2.3"
 
 [features]
-default = ["opt"]
+default = ["iov", "udp", "opt"]
 wasi_poll = []
 epoll = []
 # set/get sockopt functions
