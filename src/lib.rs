@@ -151,7 +151,7 @@ pub mod udp {
                 std::io::Error::new(std::io::ErrorKind::InvalidInput, "No address.")
             })?;
 
-            self.s.send_to(buf, addr)
+            self.s.send_to(buf, &addr)
         }
     }
 
@@ -187,7 +187,7 @@ impl TcpStream {
                 Err(e) => last_error = e,
             }
         }
-        return Err(last_error);
+        Err(last_error)
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
@@ -302,7 +302,7 @@ impl TcpListener {
             }
         }
 
-        return Err(last_error);
+        Err(last_error)
     }
 
     /// Accept incoming connections with given file descriptor flags.
@@ -513,17 +513,17 @@ impl ToSocketAddrs for str {
                 return (host, port).to_socket_addrs();
             }
         }
-        return Err(std::io::Error::new(
+        Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
             "invalid socket address",
-        ));
+        ))
     }
 }
 
 impl ToSocketAddrs for String {
     type Iter = std::vec::IntoIter<SocketAddr>;
     fn to_socket_addrs(&self) -> io::Result<std::vec::IntoIter<SocketAddr>> {
-        (&**self).to_socket_addrs()
+        (**self).to_socket_addrs()
     }
 }
 

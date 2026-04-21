@@ -730,7 +730,7 @@ impl Socket {
             let mut fd = 0;
             let res = sock_open(-1, addr_family as _, sock_kind as _, &mut fd);
             if res == 0 {
-                Ok(Socket { fd: fd as i32 })
+                Ok(Socket { fd })
             } else {
                 Err(io::Error::from_raw_os_error(res))
             }
@@ -740,18 +740,18 @@ impl Socket {
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
         let ret = unsafe { libc::write(self.as_raw_fd(), buf as *const _ as *const _, buf.len()) };
         if ret == -1 {
-            return Err(std::io::Error::last_os_error());
+            Err(std::io::Error::last_os_error())
         } else {
-            return Ok(ret as _);
+            Ok(ret as _)
         }
     }
 
     pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
         let ret = unsafe { libc::read(self.as_raw_fd(), buf as *mut _ as *mut _, buf.len()) };
         if ret == -1 {
-            return Err(std::io::Error::last_os_error());
+            Err(std::io::Error::last_os_error())
         } else {
-            return Ok(ret as _);
+            Ok(ret as _)
         }
     }
 }
@@ -1446,7 +1446,7 @@ impl Socket {
             if res != 0 {
                 Err(io::Error::from_raw_os_error(res))
             } else {
-                let s = Socket { fd: fd as i32 };
+                let s = Socket { fd };
                 // s.set_nonblocking(nonblocking)?;
                 Ok(s)
             }
@@ -1462,7 +1462,6 @@ impl Socket {
         } else {
             let addr = unsafe { addr.assume_init() };
             Ok((&addr).into())
-            // Err(io::Error::from(io::ErrorKind::Unsupported))
         }
     }
 
@@ -1475,7 +1474,6 @@ impl Socket {
         } else {
             let addr = unsafe { addr.assume_init() };
             Ok((&addr).into())
-            // Err(io::Error::from(io::ErrorKind::Unsupported))
         }
     }
 
