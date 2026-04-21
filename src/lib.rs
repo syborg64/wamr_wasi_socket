@@ -1,15 +1,17 @@
+pub use std::net::Shutdown;
+use std::{
+    io::{self, Read, Write},
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},
+    os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd},
+};
 pub mod poll;
 pub mod socket;
 #[cfg(feature = "wasi_poll")]
 pub mod wasi_poll;
 #[cfg(not(feature = "wasi_poll"))]
 mod wasi_poll;
-pub use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
-use std::{
-    io::{self, Read, Write},
-    net::{SocketAddrV4, SocketAddrV6},
-    os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd},
-};
+#[cfg(feature = "addrinfo")]
+pub use crate::socket::lookup_host;
 
 pub(crate) mod syscall {
     macro_rules! syscall {
@@ -141,11 +143,13 @@ pub mod udp {
                 }
             }
 
-            return Err(last_error);
+            Err(last_error)
         }
+
         pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
             self.s.recv_from(buf)
         }
+
         pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A) -> io::Result<usize> {
             let addr = addr.to_socket_addrs()?.next().ok_or_else(|| {
                 std::io::Error::new(std::io::ErrorKind::InvalidInput, "No address.")
@@ -362,55 +366,6 @@ pub struct Incoming<'a> {
     listener: &'a TcpListener,
 }
 
-#[cfg(feature = "addrinfo")]
-pub fn lookup_host(node: &str, port: u16) -> std::io::Result<Vec<SocketAddr>> {
-    use socket::WasiAddrinfo;
-    let hints: WasiAddrinfo = WasiAddrinfo::default();
-    let mut sockaddrs = Vec::new();
-    let mut sockbuffs = Vec::new();
-    let mut ai_canonnames = Vec::new();
-    let addrinfos = WasiAddrinfo::get_addrinfo(
-        &node,
-        &service,
-        &hints,
-        10,
-        &mut sockaddrs,
-        &mut sockbuffs,
-        &mut ai_canonnames,
-    )?;
-
-    let mut r_addrs = vec![];
-    for i in 0..addrinfos.len() {
-        let addrinfo = &addrinfos[i];
-        let sockaddr = &sockaddrs[i];
-        let sockbuff = &sockbuffs[i];
-
-        if addrinfo.ai_addrlen == 0 {
-            continue;
-        }
-
-        let addr = match sockaddr.family {
-            socket::AddressFamily::Unspec => {
-                //unimplemented!("not support unspec")
-                continue;
-            }
-            socket::AddressFamily::Inet4 => {
-                let port_buf = [sockbuff[0], sockbuff[1]];
-                let port = u16::from_be_bytes(port_buf);
-                let ip = Ipv4Addr::new(sockbuff[2], sockbuff[3], sockbuff[4], sockbuff[5]);
-                SocketAddr::V4(SocketAddrV4::new(ip, port))
-            }
-            socket::AddressFamily::Inet6 => {
-                //unimplemented!("not support IPv6")
-                continue;
-            }
-        };
-
-        r_addrs.push(addr);
-    }
-    Ok(r_addrs)
-}
-
 /*
 Implement ToScoketAddrs using nslookup, so that DNS can be resolved in wasi.
 */
@@ -483,7 +438,8 @@ impl ToSocketAddrs for (&str, u16) {
             return Ok(vec![SocketAddr::V6(addr)].into_iter());
         }
         #[cfg(feature = "addrinfo")]
-        return Ok(lookup_host(host, port)?.into_iter());
+        return Ok(Vec::from_iter(lookup_host(host, port)?).into_iter());
+
         #[cfg(not(feature = "addrinfo"))]
         return Err(io::Error::new(
             io::ErrorKind::Unsupported,

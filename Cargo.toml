@@ -18,16 +18,16 @@ path = "src/lib.rs"
 libc = "0.2.3"
 
 [features]
-default = ["iov", "udp", "opt"]
+default = ["iov", "udp", "opt", "addrinfo"]
 wasi_poll = []
 epoll = []
 # set/get sockopt functions
 opt = []
-# untested readv / writev functions
+# readv / writev functions
 iov = []
 # udp sockets
 udp = ["iov"]
-# yet unimplemented socket_resolve functions 
+# sock_addr_resolve 
 addrinfo = []
 
 [[example]]

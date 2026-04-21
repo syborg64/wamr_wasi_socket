@@ -253,125 +253,86 @@ impl From<&SocketAddr> for net::SocketAddr {
 
 #[cfg(feature = "addrinfo")]
 pub mod addrinfo {
+    use std::{ffi::c_char, vec};
+
     use super::*;
 
-    #[repr(u16, align(2))]
-    pub enum AiFlags {
-        AiPassive,
-        AiCanonname,
-        AiNumericHost,
-        AiNumericServ,
-        AiV4Mapped,
-        AiAll,
-        AiAddrConfig,
+    /// __wasi_addr_info_t
+    #[derive(Clone, Copy)]
+    #[repr(C)]
+    pub struct AddrInfo {
+        addr: SocketAddr,
+        r#type: SocketType,
     }
 
-    #[derive(Copy, Clone, Debug)]
-    #[repr(u8, align(1))]
-    pub enum AiProtocol {
-        IPProtoIP,
-        IPProtoTCP,
-        IPProtoUDP,
+    /// __wasi_addr_info_hints_t
+    #[derive(Clone, Copy)]
+    #[repr(C)]
+    pub struct AddrInfoHints {
+        r#type: SocketType,
+        family: AddressFamily,
+        hints_enabled: u8,
     }
 
-    #[derive(Debug, Clone)]
-    #[repr(C, packed(4))]
-    pub struct WasiAddrinfo {
-        pub ai_flags: AiFlags,
-        pub ai_family: AddressFamily,
-        pub ai_socktype: SocketType,
-        pub ai_protocol: AiProtocol,
-        pub ai_addrlen: u32,
-        pub ai_addr: *mut SocketAddr,
-        pub ai_canonname: *mut u8,
-        pub ai_canonnamelen: u32,
-        pub ai_next: *mut WasiAddrinfo,
-    }
+    pub struct LookupHost(vec::IntoIter<SocketAddr>);
 
-    impl WasiAddrinfo {
-        pub fn default() -> WasiAddrinfo {
-            WasiAddrinfo {
-                ai_flags: AiFlags::AiPassive,
-                ai_family: AddressFamily::Inet4,
-                ai_socktype: SocketType::Stream,
-                ai_protocol: AiProtocol::IPProtoTCP,
-                ai_addr: std::ptr::null_mut(),
-                ai_addrlen: 0,
-                ai_canonname: std::ptr::null_mut(),
-                ai_canonnamelen: 0,
-                ai_next: std::ptr::null_mut(),
-            }
+    impl Iterator for LookupHost {
+        type Item = net::SocketAddr;
+        fn next(&mut self) -> Option<net::SocketAddr> {
+            self.0.next().map(|s| (&s).into())
         }
+    }
 
-        /// Get Address Information
-        ///
-        /// As calling FFI, use buffer as parameter in order to avoid memory leak.
-        pub fn get_addrinfo(
-            node: &str,
-            service: &str,
-            hints: &WasiAddrinfo,
-            max_reslen: usize,
-            sockaddr: &mut Vec<SocketAddr>,
-            sockbuff: &mut Vec<[u8; 26]>,
-            ai_canonname: &mut Vec<String>,
-        ) -> io::Result<Vec<WasiAddrinfo>> {
-            #[link(wasm_import_module = "wasi_snapshot_preview1")]
-            extern "C" {
-                pub fn sock_getaddrinfo(
-                    node: *const u8,
-                    node_len: u32,
-                    server: *const u8,
-                    server_len: u32,
-                    hint: *const WasiAddrinfo,
-                    res: *mut u32,
-                    max_len: u32,
-                    res_len: *mut u32,
-                ) -> u32;
+    pub fn lookup_host(host: &str, _port: u16) -> io::Result<LookupHost> {
+        const MAX_INFOS: usize = 65536;
+
+        let host = host.as_bytes().as_ptr() as *const c_char;
+
+        let service = std::ptr::null();
+
+        let hints = AddrInfoHints {
+            r#type: SocketType::Any,
+            family: AddressFamily::Unspec,
+            hints_enabled: 1,
+        };
+
+        let mut infos_count;
+        let mut infos_len;
+
+        infos_count = 4; // seed the self-expansion
+
+        // loop is expected to run at most twice, but a race condition could lead to re-allocating a third time etc.
+        loop {
+            infos_len = infos_count;
+            let mut infos = Vec::with_capacity(infos_len as usize);
+
+            let info_buf = infos.spare_capacity_mut();
+
+            // let info_uninit = MaybeUninit::from(value)
+            let res = unsafe {
+                sock_addr_resolve(
+                    host,
+                    service,
+                    &hints,
+                    info_buf.as_mut_ptr() as *mut _,
+                    infos_len,
+                    &mut infos_count,
+                )
+            };
+
+            if res != 0 {
+                return Err(io::Error::from_raw_os_error(res));
             }
-            let mut node = node.to_string();
-            let mut service = service.to_string();
 
-            if !node.ends_with('\0') {
-                node.push('\0');
+            if infos_len >= infos_count {
+                unsafe { infos.set_len(infos_count as usize) };
+                return Ok(LookupHost(infos.into_iter()));
             }
 
-            if !service.ends_with('\0') {
-                service.push('\0');
-            }
-
-            let mut res_len: u32 = 0;
-            sockbuff.resize(max_reslen, [0u8; 26]);
-            ai_canonname.resize(max_reslen, String::with_capacity(30));
-            sockaddr.resize(max_reslen, WasiSockaddr::default());
-            let mut wasiaddrinfo_array: Vec<WasiAddrinfo> =
-                vec![WasiAddrinfo::default(); max_reslen];
-
-            for i in 0..max_reslen {
-                sockaddr[i].sa_data = sockbuff[i].as_mut_ptr();
-                wasiaddrinfo_array[i].ai_addr = &mut sockaddr[i];
-                wasiaddrinfo_array[i].ai_canonname = ai_canonname[i].as_mut_ptr();
-                if i > 0 {
-                    wasiaddrinfo_array[i - 1].ai_next = &mut wasiaddrinfo_array[i];
-                }
-            }
-            let mut res = wasiaddrinfo_array.as_mut_ptr() as u32;
-
-            unsafe {
-                let return_code = sock_getaddrinfo(
-                    node.as_ptr(),
-                    node.len() as u32,
-                    service.as_ptr(),
-                    service.len() as u32,
-                    hints as *const WasiAddrinfo,
-                    &mut res,
-                    max_reslen as u32,
-                    &mut res_len,
-                );
-
-                match return_code {
-                    0 => Ok(wasiaddrinfo_array[..res_len as usize].to_vec()),
-                    e => Err(std::io::Error::from_raw_os_error(e as i32)),
-                }
+            if infos_count as usize >= MAX_INFOS {
+                // sanity check against mistaken infinite growth
+                unsafe { infos.set_len(infos_count.min(infos_len) as usize) };
+                return Ok(LookupHost(infos.into_iter()));
             }
         }
     }
@@ -486,6 +447,12 @@ pub const FDFLAG_RSYNC: u16 = 0x0008; // __FDFLAG_RSYNC
 pub const FDFLAG_SYNC: u16 = 0x0010; // __FDFLAG_SYNC
 
 mod wasi_sock {
+    #[cfg(feature = "addrinfo")]
+    use std::ffi::c_char;
+
+    #[cfg(feature = "addrinfo")]
+    use crate::socket::{AddrInfo, AddrInfoHints};
+
     use super::SocketAddr;
     #[cfg(feature = "iov")]
     use libc::iovec;
@@ -518,7 +485,7 @@ mod wasi_sock {
             buf: *const iovec,
             buf_len: u32,
             flags: u16,
-            addr: *const SocketAddr,
+            addr: *mut SocketAddr,
             recv_len: *mut u32,
         ) -> i32;
 
@@ -544,6 +511,25 @@ mod wasi_sock {
         pub fn sock_addr_remote(fd: i32, addr: *mut SocketAddr) -> i32;
 
         pub fn sock_addr_local(fd: i32, addr: *mut SocketAddr) -> i32;
+
+        #[cfg(feature = "addrinfo")]
+        /// this is a terrible API
+        ///
+        /// * `info_buf` is an array for info structs
+        ///
+        /// * `info_len` is the length of that array in units of info struct
+        ///
+        /// * `info_count` is the number of elements available. If more than info_len, need to call again with more memory
+        ///
+        /// @param info_len
+        pub fn sock_addr_resolve(
+            host: *const c_char,
+            service: *const c_char,
+            hints: *const AddrInfoHints,
+            info_buf: *mut AddrInfo,
+            infos_len: u32,
+            infos_count: *mut u32,
+        ) -> i32;
 
         #[cfg(feature = "opt")]
         pub fn sock_get_broadcast(fd: i32, opt: *mut bool) -> i32;
@@ -1107,7 +1093,7 @@ impl Socket {
     pub fn send_to_vectored(
         &self,
         bufs: &[io::IoSlice<'_>],
-        addr: SocketAddr,
+        addr: &net::SocketAddr,
         flags: u16,
     ) -> io::Result<usize> {
         let addr = addr.into();
@@ -1132,20 +1118,13 @@ impl Socket {
         let mut recv_len: u32 = 0;
         let mut oflags: i32 = 0;
 
-        let mut iov = libc::iovec {
+        let iov = libc::iovec {
             iov_base: buf.as_mut_ptr() as *mut _,
             iov_len: buf.len(),
         };
 
         unsafe {
-            let res = sock_recv(
-                self.as_raw_fd(),
-                &mut iov,
-                1,
-                flags,
-                &mut recv_len,
-                &mut oflags,
-            );
+            let res = sock_recv(self.as_raw_fd(), &iov, 1, flags, &mut recv_len, &mut oflags);
             if res == 0 {
                 Ok((recv_len, oflags))
             } else {
@@ -1189,7 +1168,7 @@ impl Socket {
             iov_len: buf.len(),
         };
 
-        let mut sock = SocketAddr::default();
+        let mut addr = SocketAddr::default();
 
         let flags = 0;
 
@@ -1199,12 +1178,12 @@ impl Socket {
                 &iov as *const _,
                 1,
                 flags,
-                &mut sock,
+                &mut addr,
                 &mut recv_len,
             )
         };
         if res == 0 {
-            Ok((recv_len as usize, (&sock).into()))
+            Ok((recv_len as usize, (&addr).into()))
         } else {
             Err(io::Error::from_raw_os_error(res))
         }
