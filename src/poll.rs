@@ -199,8 +199,7 @@ pub fn poll(subs: &[Subscription]) -> std::io::Result<Vec<Event>> {
 
         let mut events = vec![];
 
-        for i in 0..n {
-            let event = revent[i];
+        for event in &revent[..n] {
             match event.type_ {
                 poll::EVENTTYPE_CLOCK => {
                     events.push({

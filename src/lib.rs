@@ -1,15 +1,17 @@
+pub use std::net::Shutdown;
+use std::{
+    io::{self, Read, Write},
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},
+    os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd},
+};
 pub mod poll;
 pub mod socket;
 #[cfg(feature = "wasi_poll")]
 pub mod wasi_poll;
 #[cfg(not(feature = "wasi_poll"))]
 mod wasi_poll;
-pub use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
-use std::{
-    io::{self, Read, Write},
-    net::{SocketAddrV4, SocketAddrV6},
-    os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd},
-};
+#[cfg(feature = "addrinfo")]
+pub use crate::socket::lookup_host;
 
 pub(crate) mod syscall {
     macro_rules! syscall {
@@ -23,6 +25,20 @@ pub(crate) mod syscall {
             }
         }};
     }
+
+    #[allow(unused)]
+    macro_rules! mysyscall {
+        ($fn: ident ( $($arg: expr),* $(,)* ) ) => {{
+            let res = unsafe { $fn($($arg, )*) };
+            if res == -1 {
+                Err(std::io::Error::last_os_error())
+            } else {
+                Ok(res)
+            }
+        }};
+    }
+    #[allow(unused)]
+    pub(crate) use mysyscall;
     pub(crate) use syscall;
 }
 
@@ -127,17 +143,19 @@ pub mod udp {
                 }
             }
 
-            return Err(last_error);
+            Err(last_error)
         }
+
         pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
             self.s.recv_from(buf)
         }
+
         pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A) -> io::Result<usize> {
             let addr = addr.to_socket_addrs()?.next().ok_or_else(|| {
                 std::io::Error::new(std::io::ErrorKind::InvalidInput, "No address.")
             })?;
 
-            self.s.send_to(buf, addr)
+            self.s.send_to(buf, &addr)
         }
     }
 
@@ -173,7 +191,7 @@ impl TcpStream {
                 Err(e) => last_error = e,
             }
         }
-        return Err(last_error);
+        Err(last_error)
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
@@ -268,11 +286,7 @@ impl TcpListener {
             let addr_family = socket::AddressFamily::from(&addrs);
             let s = socket::Socket::new(addr_family, socket::SocketType::Stream)?;
             #[cfg(feature = "opt")]
-            s.setsockopt(
-                socket::SocketOptLevel::SolSocket,
-                socket::SocketOptName::SoReuseaddr,
-                1i32,
-            )?;
+            s.set_reuse_addr(true)?;
             s.bind(&addrs)?;
             s.listen(128)?;
             s.set_nonblocking(nonblocking)?;
@@ -292,7 +306,7 @@ impl TcpListener {
             }
         }
 
-        return Err(last_error);
+        Err(last_error)
     }
 
     /// Accept incoming connections with given file descriptor flags.
@@ -350,179 +364,6 @@ impl<'a> Iterator for Incoming<'a> {
 
 pub struct Incoming<'a> {
     listener: &'a TcpListener,
-}
-
-pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
-    let dns_server = std::env::var("DNS_SERVER");
-    if let Ok(dns_server) = dns_server {
-        nslookup_with_dns_server(&dns_server, node, service)
-    } else {
-        #[cfg(feature = "addrinfo")]
-        return nslookup_with_host(node, service);
-        #[cfg(not(feature = "addrinfo"))]
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Unsupported,
-            "lookup with host not available on this platform",
-        ));
-    }
-}
-
-#[cfg(feature = "addrinfo")]
-pub fn nslookup_with_host(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
-    use socket::WasiAddrinfo;
-    let hints: WasiAddrinfo = WasiAddrinfo::default();
-    let mut sockaddrs = Vec::new();
-    let mut sockbuffs = Vec::new();
-    let mut ai_canonnames = Vec::new();
-    let addrinfos = WasiAddrinfo::get_addrinfo(
-        &node,
-        &service,
-        &hints,
-        10,
-        &mut sockaddrs,
-        &mut sockbuffs,
-        &mut ai_canonnames,
-    )?;
-
-    let mut r_addrs = vec![];
-    for i in 0..addrinfos.len() {
-        let addrinfo = &addrinfos[i];
-        let sockaddr = &sockaddrs[i];
-        let sockbuff = &sockbuffs[i];
-
-        if addrinfo.ai_addrlen == 0 {
-            continue;
-        }
-
-        let addr = match sockaddr.family {
-            socket::AddressFamily::Unspec => {
-                //unimplemented!("not support unspec")
-                continue;
-            }
-            socket::AddressFamily::Inet4 => {
-                let port_buf = [sockbuff[0], sockbuff[1]];
-                let port = u16::from_be_bytes(port_buf);
-                let ip = Ipv4Addr::new(sockbuff[2], sockbuff[3], sockbuff[4], sockbuff[5]);
-                SocketAddr::V4(SocketAddrV4::new(ip, port))
-            }
-            socket::AddressFamily::Inet6 => {
-                //unimplemented!("not support IPv6")
-                continue;
-            }
-        };
-
-        r_addrs.push(addr);
-    }
-    Ok(r_addrs)
-}
-
-pub fn nslookup_with_dns_server(
-    dns_server: &str,
-    node: &str,
-    _service: &str,
-) -> std::io::Result<Vec<SocketAddr>> {
-    let mut conn = TcpStream::connect(dns_server)?;
-    #[cfg(feature = "opt")]
-    {
-        let timeout = std::time::Duration::from_secs(5);
-        let _ignore = conn.as_mut().set_send_timeout(Some(timeout));
-        let _ignore = conn.as_mut().set_recv_timeout(Some(timeout));
-    }
-
-    if node == "localhost" {
-        return ("127.0.0.1", 0u16).to_socket_addrs().map(|v| v.collect());
-    }
-    let r = resolve::<_, Ipv4Addr>(&mut conn, node)
-        .unwrap_or_default()
-        .into_iter()
-        .map(|addr| (addr, 0).into())
-        .collect::<Vec<SocketAddr>>();
-    if r.is_empty() {
-        // __WASI_ERRNO_AINODATA
-        Err(std::io::Error::from_raw_os_error(83))
-    } else {
-        Ok(r)
-    }
-}
-
-pub trait ToQType: Sized {
-    fn q_type() -> dns_parser::QueryType;
-
-    fn from_rr(rr: dns_parser::RData) -> Option<Self>;
-}
-
-impl ToQType for Ipv4Addr {
-    fn q_type() -> dns_parser::QueryType {
-        dns_parser::QueryType::A
-    }
-
-    fn from_rr(rr: dns_parser::RData) -> Option<Self> {
-        if let dns_parser::RData::A(ip) = rr {
-            Some(ip.0)
-        } else {
-            None
-        }
-    }
-}
-
-impl ToQType for Ipv6Addr {
-    fn q_type() -> dns_parser::QueryType {
-        dns_parser::QueryType::AAAA
-    }
-
-    fn from_rr(rr: dns_parser::RData) -> Option<Self> {
-        if let dns_parser::RData::AAAA(ip) = rr {
-            Some(ip.0)
-        } else {
-            None
-        }
-    }
-}
-
-pub fn resolve<S: Write + Read, T: ToQType>(
-    conn: &mut S,
-    name: &str,
-) -> Result<Vec<T>, Box<dyn std::error::Error>> {
-    use dns_parser::QueryClass;
-    use dns_parser::{Builder, Packet, ResponseCode};
-    let id = rand::random();
-    let mut builder = Builder::new_query(id, true);
-    builder.add_question(name, false, T::q_type(), QueryClass::IN);
-    let packet = builder.build().map_err(|_| "truncated packet")?;
-    let mut psize = (packet.len() as u16).to_be_bytes();
-
-    conn.write_all(&psize[..])?;
-    conn.write_all(&packet)?;
-
-    let n = conn.read(&mut psize)?;
-    if n < 2 {
-        return Err("Partial packet received".into());
-    }
-
-    let psize = u16::from_be_bytes(psize) as usize;
-    let mut buf = vec![0u8; psize];
-    let n = conn.read(&mut buf[0..psize])?;
-    if n != psize {
-        return Err("Partial packet received".into());
-    }
-
-    let pkt = Packet::parse(&buf)?;
-
-    if pkt.header.id != id {
-        return Err("Illegal id".into());
-    }
-
-    if pkt.header.response_code != ResponseCode::NoError {
-        return Err(pkt.header.response_code.into());
-    }
-
-    let mut address = vec![];
-    for ans in pkt.answers {
-        if let Some(addr) = T::from_rr(ans.data) {
-            address.push(addr);
-        }
-    }
-    Ok(address)
 }
 
 /*
@@ -596,14 +437,14 @@ impl ToSocketAddrs for (&str, u16) {
             let addr = std::net::SocketAddrV6::new(addr, port, 0, 0);
             return Ok(vec![SocketAddr::V6(addr)].into_iter());
         }
-        let v: Vec<_> = nslookup(host, "http")?
-            .into_iter()
-            .map(|mut a| {
-                a.set_port(port);
-                a
-            })
-            .collect();
-        Ok(v.into_iter())
+        #[cfg(feature = "addrinfo")]
+        return Ok(Vec::from_iter(lookup_host(host, port)?).into_iter());
+
+        #[cfg(not(feature = "addrinfo"))]
+        return Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "failed to lookup address information: Not supported on this platform",
+        ));
     }
 }
 
@@ -623,29 +464,22 @@ impl ToSocketAddrs for str {
             return Ok(vec![addr].into_iter());
         }
 
-        let host_and_port = self.split(":").collect::<Vec<&str>>();
-        if host_and_port.len() != 2 {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "invalid socket address",
-            ));
+        if let Some((host, port)) = self.split_once(":") {
+            if let Ok(port) = port.parse() {
+                return (host, port).to_socket_addrs();
+            }
         }
-        let host = host_and_port[0];
-        let port = str::parse::<u16>(host_and_port[1]).map_err(|_e| {
-            std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid port value")
-        })?;
-        let mut addrs = nslookup(host, "http")?;
-        for addr in addrs.iter_mut() {
-            addr.set_port(port);
-        }
-        Ok(addrs.into_iter())
+        Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "invalid socket address",
+        ))
     }
 }
 
 impl ToSocketAddrs for String {
     type Iter = std::vec::IntoIter<SocketAddr>;
     fn to_socket_addrs(&self) -> io::Result<std::vec::IntoIter<SocketAddr>> {
-        (&**self).to_socket_addrs()
+        (**self).to_socket_addrs()
     }
 }
 
