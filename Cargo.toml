@@ -30,6 +30,9 @@ udp = ["iov"]
 # sock_addr_resolve 
 addrinfo = []
 
+# expose fake no-op bindings for unimplemented functions 
+fake = []
+
 [[example]]
 name = "get_addrinfo"
 required-features = ["addrinfo"]

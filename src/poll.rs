@@ -53,6 +53,7 @@ impl Subscription {
     }
 }
 
+#[derive(Debug)]
 pub enum EventType {
     Timeout,
     Error(std::io::Error),
@@ -60,6 +61,7 @@ pub enum EventType {
     Write,
 }
 
+#[derive(Debug)]
 pub struct Event {
     pub event_type: EventType,
     pub userdata: u64,

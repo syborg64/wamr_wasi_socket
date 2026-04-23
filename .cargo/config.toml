@@ -1,5 +1,8 @@
 [build]
-target="wasm32-wasip1"
+target="wasm32-wasip1-threads"
 
 [target.wasm32-wasip1]
+runner = "iwasm  --addr-pool=0.0.0.0/0"
+
+[target.wasm32-wasip1-threads]
 runner = "iwasm  --addr-pool=0.0.0.0/0"

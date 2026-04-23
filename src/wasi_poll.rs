@@ -100,7 +100,7 @@ pub struct Subscription {
 #[link(wasm_import_module = "wasi_snapshot_preview1")]
 extern "C" {
     #[cfg(not(feature = "epoll"))]
-    pub fn poll_oneoff(arg0: i32, arg1: i32, arg2: i32, arg3: i32) -> i32;
+    pub fn poll_oneoff(arg0: *const Subscription, arg1: *mut Event, arg2: u32, arg3: *mut u32) -> i32;
     #[cfg(feature = "epoll")]
     pub fn epoll_oneoff(arg0: i32, arg1: i32, arg2: i32, arg3: i32) -> i32;
 }
@@ -110,23 +110,23 @@ pub unsafe fn poll(
     out: *mut Event,
     nsubscriptions: usize,
 ) -> std::io::Result<usize> {
-    let mut rp0 = 0_usize;
+    let mut rp0 = 0u32;
     #[cfg(not(feature = "epoll"))]
     let ret = poll_oneoff(
-        in_ as i32,
-        out as i32,
-        nsubscriptions as i32,
-        (&mut rp0) as *mut usize as i32,
+        in_,
+        out,
+        nsubscriptions as u32,
+        (&mut rp0) as *mut u32,
     );
     #[cfg(feature = "epoll")]
     let ret = epoll_oneoff(
         in_ as i32,
         out as i32,
         nsubscriptions as i32,
-        (&mut rp0) as *mut usize as i32,
+        (&mut rp0) as *mut u32 as i32,
     );
     match ret {
-        0 => Ok(rp0),
+        0 => Ok(rp0 as usize),
         _ => Err(std::io::Error::from_raw_os_error(ret)),
     }
 }

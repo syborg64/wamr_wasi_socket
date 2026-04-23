@@ -3,6 +3,7 @@ use std::{
     io::{self, Read, Write},
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},
     os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd},
+    time::Duration,
 };
 pub mod poll;
 pub mod socket;
@@ -146,6 +147,24 @@ pub mod udp {
             Err(last_error)
         }
 
+        pub fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
+            let mut last_error = io::Error::from(io::ErrorKind::Other);
+
+            let addrs = addr.to_socket_addrs()?;
+            for addr in addrs {
+                match self.s.connect(&addr) {
+                    Ok(_) => return Ok(()),
+                    Err(e) => last_error = e,
+                }
+            }
+
+            Err(last_error)
+        }
+
+        pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
+            self.s.recv(buf)
+        }
+
         pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
             self.s.recv_from(buf)
         }
@@ -156,6 +175,151 @@ pub mod udp {
             })?;
 
             self.s.send_to(buf, &addr)
+        }
+
+        pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
+            self.s.send(buf)
+        }
+
+        pub fn peek(&self, _buf: &mut [u8]) -> io::Result<usize> {
+            Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "peaking is not supported on this platform",
+            ))
+        }
+
+        pub fn peek_from(&self, _buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
+            Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "peaking is not supported on this platform",
+            ))
+        }
+
+        /// Get local address.
+        pub fn local_addr(&self) -> io::Result<SocketAddr> {
+            self.s.get_local()
+        }
+
+        /// Get peer address.
+        pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+            self.s.get_peer()
+        }
+
+        pub fn broadcast(&self) -> io::Result<bool> {
+            self.s.broadcast()
+        }
+
+        pub fn keep_alive(&self) -> io::Result<bool> {
+            self.s.keep_alive()
+        }
+        pub fn linger(&self) -> io::Result<Option<Duration>> {
+            self.s.linger()
+        }
+        pub fn recv_buf_size(&self) -> io::Result<u32> {
+            self.s.recv_buf_size()
+        }
+        pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
+            self.s.read_timeout()
+        }
+        pub fn reuse_addr(&self) -> io::Result<bool> {
+            self.s.reuse_addr()
+        }
+        pub fn reuse_port(&self) -> io::Result<bool> {
+            self.s.reuse_port()
+        }
+        pub fn send_buf_size(&self) -> io::Result<u32> {
+            self.s.send_buf_size()
+        }
+        pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
+            self.s.write_timeout()
+        }
+        pub fn tcp_quick_ack(&self) -> io::Result<bool> {
+            self.s.tcp_quick_ack()
+        }
+        pub fn multicast_loop_v4(&self) -> io::Result<bool> {
+            self.s.ip_multicast_loop(false)
+        }
+        pub fn multicast_loop_v6(&self) -> io::Result<bool> {
+            self.s.ip_multicast_loop(false)
+        }
+        
+        pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
+            self.s.ip_multicast_ttl()
+        }
+        pub fn multicast_ttl_v6(&self) -> io::Result<u32> {
+            self.s.ip_multicast_ttl()
+        }
+        pub fn ttl(&self) -> io::Result<u32> {
+            self.s.ip_ttl()
+        }
+        pub fn ipv6_only(&self) -> io::Result<bool> {
+            self.s.ipv6_only()
+        }
+        pub fn set_broadcast(&self, opt: bool) -> io::Result<()> {
+            self.s.set_broadcast(opt)
+        }
+        pub fn set_keep_alive(&self, opt: bool) -> io::Result<()> {
+            self.s.set_keep_alive(opt)
+        }
+        pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
+            self.s.set_linger(linger)
+        }
+        pub fn set_recv_buf_size(&self, opt: usize) -> io::Result<()> {
+            self.s.set_recv_buf_size(opt)
+        }
+        pub fn set_read_timeout(&self, opt: Option<Duration>) -> io::Result<()> {
+            self.s.set_read_timeout(opt)
+        }
+        pub fn set_reuse_addr(&self, opt: bool) -> io::Result<()> {
+            self.s.set_reuse_addr(opt)
+        }
+        pub fn set_reuse_port(&self, opt: bool) -> io::Result<()> {
+            self.s.set_reuse_port(opt)
+        }
+        pub fn set_send_buf_size(&self, opt: usize) -> io::Result<()> {
+            self.s.set_send_buf_size(opt)
+        }
+        pub fn set_write_timeout(&self, opt: Option<Duration>) -> io::Result<()> {
+            self.s.set_write_timeout(opt)
+        }
+        /// technically incorrect
+        pub fn set_multicast_loop_v4(&self, opt: bool) -> io::Result<()> {
+            self.s.set_ip_multicast_loop(false, opt)
+        }
+        /// technically incorrect
+        pub fn set_multicast_loop_v6(&self, opt: bool) -> io::Result<()> {
+            self.s.set_ip_multicast_loop(false, opt)
+        }
+        /// technically incorrect
+        pub fn set_multicast_ttl_v4(&self, opt: u32) -> io::Result<()> {
+            self.s.set_ip_multicast_ttl(opt)
+        }
+        /// technically incorrect
+        pub fn set_multicast_ttl_v6(&self, opt: u32) -> io::Result<()> {
+            self.s.set_ip_multicast_ttl(opt)
+        }
+        pub fn join_multicast_v4(&self, addr: &Ipv4Addr, _interface: &Ipv4Addr) -> io::Result<()> {
+            self.s.set_ip_add_membership(&IpAddr::V4(*addr), 0)
+        }
+        pub fn join_multicast_v6(&self, addr: &Ipv6Addr, interface: u32) -> io::Result<()> {
+            self.s.set_ip_add_membership(&IpAddr::V6(*addr), interface)
+        }
+        pub fn leave_multicast_v4(&self, addr: &Ipv4Addr, _interface: &Ipv4Addr) -> io::Result<()> {
+            self.s.set_ip_drop_membership(&IpAddr::V4(*addr), 0)
+        }
+        pub fn leave_multicast_v6(&self, addr: &Ipv6Addr, interface: u32) -> io::Result<()> {
+            self.s.set_ip_drop_membership(&IpAddr::V6(*addr), interface)
+        }
+        pub fn set_ttl(&self, opt: u32) -> io::Result<()> {
+            self.s.set_ip_ttl(opt)
+        }
+        pub fn set_ipv6_only(&self, opt: bool) -> io::Result<()> {
+            self.s.set_ipv6_only(opt)
+        }
+
+        #[cfg(feature = "fake")]
+        pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+            Ok(None)
         }
     }
 
@@ -214,6 +378,134 @@ impl TcpStream {
 
     pub fn new(s: socket::Socket) -> Self {
         Self { s }
+    }
+
+    pub fn nodelay(&self) -> io::Result<bool> {
+        self.s.tcp_no_delay()
+    }
+
+    pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
+        self.s.set_tcp_no_delay(nodelay)
+    }
+
+    pub fn ttl(&self) -> io::Result<u32> {
+        self.s.ip_ttl()
+    }
+
+    pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
+        self.s.set_ip_ttl(ttl)
+    }
+
+    pub fn keep_alive(&self) -> io::Result<bool> {
+        self.s.keep_alive()
+    }
+    pub fn linger(&self) -> io::Result<Option<Duration>> {
+        self.s.linger()
+    }
+    pub fn recv_buf_size(&self) -> io::Result<u32> {
+        self.s.recv_buf_size()
+    }
+    pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
+        self.s.read_timeout()
+    }
+    pub fn reuse_addr(&self) -> io::Result<bool> {
+        self.s.reuse_addr()
+    }
+    pub fn reuse_port(&self) -> io::Result<bool> {
+        self.s.reuse_port()
+    }
+    pub fn send_buf_size(&self) -> io::Result<u32> {
+        self.s.send_buf_size()
+    }
+    pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
+        self.s.write_timeout()
+    }
+    pub fn tcp_fastopen_connect(&self) -> io::Result<bool> {
+        self.s.tcp_fastopen_connect()
+    }
+    pub fn tcp_keep_idle(&self) -> io::Result<Duration> {
+        self.s.tcp_keep_idle()
+    }
+    pub fn tcp_keep_intvl(&self) -> io::Result<Duration> {
+        self.s.tcp_keep_intvl()
+    }
+    pub fn tcp_no_delay(&self) -> io::Result<bool> {
+        self.s.tcp_no_delay()
+    }
+    pub fn tcp_quick_ack(&self) -> io::Result<bool> {
+        self.s.tcp_quick_ack()
+    }
+    pub fn ip_multicast_loop(&self, ipv6: bool) -> io::Result<bool> {
+        self.s.ip_multicast_loop(ipv6)
+    }
+    pub fn ip_multicast_ttl(&self) -> io::Result<u32> {
+        self.s.ip_multicast_ttl()
+    }
+    pub fn ip_ttl(&self) -> io::Result<u32> {
+        self.s.ip_ttl()
+    }
+    pub fn ipv6_only(&self) -> io::Result<bool> {
+        self.s.ipv6_only()
+    }
+    pub fn set_broadcast(&self, opt: bool) -> io::Result<()> {
+        self.s.set_broadcast(opt)
+    }
+    pub fn set_keep_alive(&self, opt: bool) -> io::Result<()> {
+        self.s.set_keep_alive(opt)
+    }
+    pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
+        self.s.set_linger(linger)
+    }
+    pub fn set_recv_buf_size(&self, opt: usize) -> io::Result<()> {
+        self.s.set_recv_buf_size(opt)
+    }
+    pub fn set_read_timeout(&self, opt: Option<Duration>) -> io::Result<()> {
+        self.s.set_read_timeout(opt)
+    }
+    pub fn set_reuse_addr(&self, opt: bool) -> io::Result<()> {
+        self.s.set_reuse_addr(opt)
+    }
+    pub fn set_reuse_port(&self, opt: bool) -> io::Result<()> {
+        self.s.set_reuse_port(opt)
+    }
+    pub fn set_send_buf_size(&self, opt: usize) -> io::Result<()> {
+        self.s.set_send_buf_size(opt)
+    }
+    pub fn set_write_timeout(&self, opt: Option<Duration>) -> io::Result<()> {
+        self.s.set_write_timeout(opt)
+    }
+    pub fn set_tcp_fastopen_connect(&self, opt: bool) -> io::Result<()> {
+        self.s.set_tcp_fastopen_connect(opt)
+    }
+    pub fn set_tcp_keep_idle(&self, opt: Duration) -> io::Result<()> {
+        self.s.set_tcp_keep_idle(opt)
+    }
+    pub fn set_tcp_keep_intvl(&self, opt: Duration) -> io::Result<()> {
+        self.s.set_tcp_keep_intvl(opt)
+    }
+    pub fn set_tcp_no_delay(&self, opt: bool) -> io::Result<()> {
+        self.s.set_tcp_no_delay(opt)
+    }
+    pub fn set_tcp_quick_ack(&self, opt: bool) -> io::Result<()> {
+        self.s.set_tcp_quick_ack(opt)
+    }
+    pub fn set_ip_multicast_loop(&self, ipv6: bool, opt: bool) -> io::Result<()> {
+        self.s.set_ip_multicast_loop(ipv6, opt)
+    }
+    pub fn set_ip_multicast_ttl(&self, opt: u32) -> io::Result<()> {
+        self.s.set_ip_multicast_ttl(opt)
+    }
+    pub fn set_ip_add_membership(&self, addr: &IpAddr, interface: u32) -> io::Result<()> {
+        self.s.set_ip_add_membership(addr, interface)
+    }
+    pub fn set_ip_drop_membership(&self, addr: &IpAddr, interface: u32) -> io::Result<()> {
+        self.s.set_ip_drop_membership(addr, interface)
+    }
+    pub fn set_ip_ttl(&self, opt: u32) -> io::Result<()> {
+        self.s.set_ip_ttl(opt)
+    }
+    pub fn set_ipv6_only(&self, opt: bool) -> io::Result<()> {
+        self.s.set_ipv6_only(opt)
     }
 }
 
@@ -323,6 +615,27 @@ impl TcpListener {
     /// Get local address.
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         self.s.get_local()
+    }
+
+    pub fn nodelay(&self) -> io::Result<bool> {
+        self.s.tcp_no_delay()
+    }
+
+    pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
+        self.s.set_tcp_no_delay(nodelay)
+    }
+
+    pub fn ttl(&self) -> io::Result<u32> {
+        self.s.ip_ttl()
+    }
+
+    pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
+        self.s.set_ip_ttl(ttl)
+    }
+
+    #[cfg(feature = "fake")]
+    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+        Ok(None)
     }
 }
 
