@@ -116,15 +116,30 @@ impl Default for SocketAddr {
     }
 }
 
+
+/// __wasi_addr_ip_t {
+///     i32: kind;
+///     addr: union { ip4: __wasi_addr_ip4_t, ip6: __wasi_addr_ip6_t}
+/// }
+/// taged union:
+#[derive(Clone, Copy)]
+#[repr(C, i32)]
+pub enum IpAddr {
+    V4(Ipv4Addr),
+    V6(Ipv6Addr),
+}
+
 #[cfg(test)]
 mod test {
+    use crate::socket::{IpAddr, Ipv6Addr};
+
     use super::{SocketAddr, SocketAddrV6};
     use std::net;
     use std::ptr::addr_of;
     use std::str::FromStr;
 
     #[test]
-    fn test_union_layout() {
+    fn test_sockaddr_union_layout() {
         let sock4 = SocketAddr::from(&net::SocketAddr::from_str("0.0.0.0:80").unwrap());
         let SocketAddr::V4(ref v4) = sock4 else {
             panic!()
@@ -146,6 +161,33 @@ mod test {
         assert_eq!(
             size_of::<i32>() + size_of::<SocketAddrV6>(),
             size_of::<SocketAddr>(),
+            "total size if the discriminant + the largest member of the union"
+        );
+    }
+
+        #[test]
+    fn test_addr_union_layout() {
+        let addr4 = IpAddr::from(&net::IpAddr::from_str("0.0.0.0").unwrap());
+        let IpAddr::V4(ref v4) = addr4 else {
+            panic!()
+        };
+        let addr6 = IpAddr::from(&net::IpAddr::from_str("::1").unwrap());
+        let IpAddr::V6(ref v6) = addr6 else {
+            panic!()
+        };
+        assert_eq!(
+            addr_of!(*v4) as usize,
+            addr_of!(addr4) as usize + size_of::<i32>(),
+            "v4 member starts after the i32 discriminant"
+        );
+        assert_eq!(
+            addr_of!(*v6) as usize,
+            addr_of!(addr6) as usize + size_of::<i32>(),
+            "v6 member6 starts after the i32 discriminant"
+        );
+        assert_eq!(
+            size_of::<i32>() + size_of::<Ipv6Addr>(),
+            size_of::<IpAddr>(),
             "total size if the discriminant + the largest member of the union"
         );
     }
@@ -209,6 +251,15 @@ impl From<&std::net::SocketAddr> for SocketAddr {
         match value {
             std::net::SocketAddr::V4(v4) => Self::V4(v4.into()),
             std::net::SocketAddr::V6(v6) => Self::V6(v6.into()),
+        }
+    }
+}
+
+impl From<&std::net::IpAddr> for IpAddr {
+    fn from(value: &std::net::IpAddr) -> Self {
+        match value {
+            std::net::IpAddr::V4(v4) => Self::V4(v4.into()),
+            std::net::IpAddr::V6(v6) => Self::V6(v6.into()),
         }
     }
 }
@@ -450,6 +501,8 @@ mod wasi_sock {
     #[cfg(feature = "addrinfo")]
     use std::ffi::c_char;
 
+    #[cfg(feature = "opt")]
+    use crate::socket::IpAddr;
     #[cfg(feature = "addrinfo")]
     use crate::socket::{AddrInfo, AddrInfoHints};
 
@@ -646,10 +699,10 @@ mod wasi_sock {
         pub fn sock_set_ip_multicast_ttl(fd: i32, opt: u32) -> i32;
 
         #[cfg(feature = "opt")]
-        pub fn sock_set_ip_add_membership(fd: i32, addr: *const SocketAddr, interface: u32) -> i32;
+        pub fn sock_set_ip_add_membership(fd: i32, addr: *const IpAddr, interface: u32) -> i32;
 
         #[cfg(feature = "opt")]
-        pub fn sock_set_ip_drop_membership(fd: i32, addr: *const SocketAddr, interface: u32)
+        pub fn sock_set_ip_drop_membership(fd: i32, addr: *const IpAddr, interface: u32)
             -> i32;
 
         #[cfg(feature = "opt")]
@@ -1012,21 +1065,21 @@ impl Socket {
         Ok(())
     }
 
-    pub fn set_ip_add_membership(&self, addr: &net::SocketAddr, interface: u32) -> io::Result<()> {
-        let addr: SocketAddr = addr.into();
+    pub fn set_ip_add_membership(&self, addr: &net::IpAddr, interface: u32) -> io::Result<()> {
+        let addr: IpAddr = addr.into();
         mysyscall!(sock_set_ip_add_membership(
             self.as_raw_fd(),
-            &addr as *const SocketAddr,
+            &addr as *const IpAddr,
             interface
         ))?;
         Ok(())
     }
 
-    pub fn set_ip_drop_membership(&self, addr: &net::SocketAddr, interface: u32) -> io::Result<()> {
-        let addr: SocketAddr = addr.into();
+    pub fn set_ip_drop_membership(&self, addr: &net::IpAddr, interface: u32) -> io::Result<()> {
+        let addr: IpAddr = addr.into();
         mysyscall!(sock_set_ip_drop_membership(
             self.as_raw_fd(),
-            &addr as *const SocketAddr,
+            &addr as *const IpAddr,
             interface
         ))?;
         Ok(())
