@@ -1328,19 +1328,15 @@ impl Socket {
         }
     }
 
-    pub fn accept(&self, nonblocking: bool) -> io::Result<Self> {
+    pub fn accept(&self) -> io::Result<Self> {
         unsafe {
             let mut fd: i32 = 0;
-            let mut flags = 0;
-            if nonblocking {
-                flags |= FDFLAG_NONBLOCK;
-            }
+            let flags = 0;
             let res = sock_accept(self.as_raw_fd(), flags, &mut fd);
             if res != 0 {
                 Err(io::Error::from_raw_os_error(res))
             } else {
                 let s = Socket { fd };
-                // s.set_nonblocking(nonblocking)?;
                 Ok(s)
             }
         }

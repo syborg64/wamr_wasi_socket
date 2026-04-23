@@ -72,7 +72,7 @@ fn connects_to_subscriptions(connects: &Connects) -> Vec<poll::Subscription> {
 
 fn main() -> std::io::Result<()> {
     let mut connects = Connects::new();
-    let server = TcpListener::bind("127.0.0.1:1234", true)?;
+    let server = TcpListener::bind("127.0.0.1:1234")?;
     connects.add(NetConn::Server(server));
 
     loop {
@@ -88,7 +88,7 @@ fn main() -> std::io::Result<()> {
                         return Err(e);
                     }
                     poll::EventType::Read => {
-                        let (mut tcp_client, addr) = server.accept(true)?;
+                        let (mut tcp_client, addr) = server.accept()?;
                         println!("accept from {}", addr);
 
                         match tcp_client.write(DATA) {

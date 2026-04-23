@@ -278,18 +278,17 @@ impl TcpListener {
     ///
     /// If multiple address is given, the first successful socket is
     /// returned.
-    pub fn bind<A: ToSocketAddrs>(addrs: A, nonblocking: bool) -> io::Result<TcpListener> {
+    pub fn bind<A: ToSocketAddrs>(addrs: A) -> io::Result<TcpListener> {
         let mut last_error = io::Error::from(io::ErrorKind::Other);
         let addrs = addrs.to_socket_addrs()?;
 
-        let bind = |addrs, nonblocking| {
+        let bind = |addrs| {
             let addr_family = socket::AddressFamily::from(&addrs);
             let s = socket::Socket::new(addr_family, socket::SocketType::Stream)?;
             #[cfg(feature = "opt")]
             s.set_reuse_addr(true)?;
             s.bind(&addrs)?;
-            s.listen(128)?;
-            s.set_nonblocking(nonblocking)?;
+            s.listen(1024)?;
 
             let port = addrs.port();
             Ok(TcpListener {
@@ -300,7 +299,7 @@ impl TcpListener {
         };
 
         for addr in addrs {
-            match bind(addr, nonblocking) {
+            match bind(addr) {
                 Ok(tcp_listener) => return Ok(tcp_listener),
                 Err(e) => last_error = e,
             }
@@ -310,8 +309,8 @@ impl TcpListener {
     }
 
     /// Accept incoming connections with given file descriptor flags.
-    pub fn accept(&self, nonblocking: bool) -> io::Result<(TcpStream, SocketAddr)> {
-        let s = self.s.accept(nonblocking)?;
+    pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
+        let s = self.s.accept()?;
         let stream = TcpStream { s };
         let peer = stream.peer_addr()?;
         Ok((stream, peer))
@@ -354,7 +353,7 @@ impl<'a> Iterator for Incoming<'a> {
     type Item = io::Result<TcpStream>;
 
     fn next(&mut self) -> Option<io::Result<TcpStream>> {
-        Some(self.listener.accept(false).map(|s| s.0))
+        Some(self.listener.accept().map(|s| s.0))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
