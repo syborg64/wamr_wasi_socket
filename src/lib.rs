@@ -47,6 +47,7 @@ pub(crate) mod syscall {
 use syscall::syscall;
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct TcpStream {
     s: socket::Socket,
 }
@@ -99,6 +100,7 @@ pub mod udp {
     use super::*;
 
     #[derive(Debug)]
+    #[repr(transparent)]
     pub struct UdpSocket {
         s: socket::Socket,
     }
@@ -159,6 +161,14 @@ pub mod udp {
             }
 
             Err(last_error)
+        }
+
+        pub fn nonblocking(&self) -> io::Result<bool> {
+            self.s.nonblocking()
+        }
+
+        pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+            self.s.set_nonblocking(nonblocking)
         }
 
         pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -242,7 +252,7 @@ pub mod udp {
         pub fn multicast_loop_v6(&self) -> io::Result<bool> {
             self.s.ip_multicast_loop(false)
         }
-        
+
         pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
             self.s.ip_multicast_ttl()
         }
@@ -328,6 +338,20 @@ pub mod udp {
             self.s.as_raw_fd()
         }
     }
+
+    impl IntoRawFd for UdpSocket {
+        fn into_raw_fd(self) -> std::os::fd::RawFd {
+            self.s.into_raw_fd()
+        }
+    }
+
+    impl FromRawFd for UdpSocket {
+        unsafe fn from_raw_fd(fd: std::os::wasi::prelude::RawFd) -> Self {
+            Self {
+                s: FromRawFd::from_raw_fd(fd),
+            }
+        }
+    }
 }
 
 #[cfg(feature = "udp")]
@@ -370,6 +394,10 @@ impl TcpStream {
     /// Get local address.
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         self.s.get_local()
+    }
+
+    pub fn nonblocking(&self) -> io::Result<bool> {
+        self.s.nonblocking()
     }
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
