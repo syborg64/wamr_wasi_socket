@@ -715,6 +715,7 @@ mod wasi_sock {
 use wasi_sock::*;
 
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct Socket {
     fd: RawFd,
 }
@@ -1318,9 +1319,9 @@ impl Socket {
         }
     }
 
-    pub fn listen(&self, backlog: u32) -> io::Result<()> {
+    pub fn listen(&self, backlog: i32) -> io::Result<()> {
         let fd = self.as_raw_fd();
-        let res = unsafe { sock_listen(fd, backlog) };
+        let res = unsafe { sock_listen(fd, backlog as u32) };
         if res != 0 {
             Err(io::Error::from_raw_os_error(res))
         } else {
@@ -1377,7 +1378,7 @@ impl Socket {
             if res == 0 {
                 Ok(())
             } else {
-                Err(io::Error::from_raw_os_error(res))
+                Err(io::Error::last_os_error())
             }
         }
     }
@@ -1385,6 +1386,11 @@ impl Socket {
 
 #[cfg(feature = "opt")]
 impl Socket {
+    #[cfg(feature = "fake")]
+    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+        Ok(None)
+    }
+    
     // pub fn take_error(&self) -> io::Result<()> {
     //     unsafe {
     //         let fd = self.fd;
