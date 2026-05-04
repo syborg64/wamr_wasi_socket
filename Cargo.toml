@@ -1,10 +1,10 @@
 [package]
 name = "wamr_wasi_socket"
-version = "0.2.2-rc-2026-04-23"
+version = "0.2.2-rc-2026-05-04"
 authors = ["Yi <yi@secondstate.io>", "J <julian.scott@gapfruit.com>" ]
 edition = "2021"
 license = "Apache-2.0"
-description = "Rust API for the networking socket functions supported in the WAMR Runtime for WebAssembly. Based off wamr_wasi_socket by yi@secondstate.io"
+description = "Rust API for the networking socket functions supported in the WAMR Runtime for WebAssembly. Based off wasmedge_wasi_socket by yi@secondstate.io"
 repository = "https://github.com/syborg64/wamr_wasi_socket"
 readme = "README.md"
 categories = ["network-programming"]
