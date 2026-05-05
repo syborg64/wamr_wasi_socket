@@ -83,15 +83,26 @@ pub union SubscriptionUU {
     pub fd_write: SubscriptionFdReadwrite,
 }
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct SubscriptionU {
-    pub tag: u8,
-    pub u: SubscriptionUU,
+impl std::fmt::Debug for SubscriptionU {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.tag {
+            EVENTTYPE_CLOCK => unsafe { self.u.clock.fmt(f) },
+            EVENTTYPE_FD_READ => unsafe { self.u.fd_read.fmt(f) },
+            EVENTTYPE_FD_WRITE => unsafe { self.u.fd_write.fmt(f) },
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[repr(C)]
 #[derive(Copy, Clone)]
+pub struct SubscriptionU {
+    pub tag: Eventtype,
+    pub u: SubscriptionUU,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
 pub struct Subscription {
     pub userdata: Userdata,
     pub u: SubscriptionU,
@@ -100,24 +111,27 @@ pub struct Subscription {
 #[link(wasm_import_module = "wasi_snapshot_preview1")]
 extern "C" {
     #[cfg(not(feature = "epoll"))]
-    pub fn poll_oneoff(arg0: *const Subscription, arg1: *mut Event, arg2: u32, arg3: *mut u32) -> i32;
+    pub fn poll_oneoff(
+        arg0: *const Subscription,
+        arg1: *mut Event,
+        arg2: u32,
+        arg3: *mut u32,
+    ) -> i32;
     #[cfg(feature = "epoll")]
     pub fn epoll_oneoff(arg0: i32, arg1: i32, arg2: i32, arg3: i32) -> i32;
 }
 
+/// # Safety
+/// in_ and out buffers must be at least nsubscriptions elements long
 pub unsafe fn poll(
     in_: *const Subscription,
     out: *mut Event,
     nsubscriptions: usize,
 ) -> std::io::Result<usize> {
+    println!("wamr_wasi_socket::poll");
     let mut rp0 = 0u32;
     #[cfg(not(feature = "epoll"))]
-    let ret = poll_oneoff(
-        in_,
-        out,
-        nsubscriptions as u32,
-        (&mut rp0) as *mut u32,
-    );
+    let ret = poll_oneoff(in_, out, nsubscriptions as u32, (&mut rp0) as *mut u32);
     #[cfg(feature = "epoll")]
     let ret = epoll_oneoff(
         in_ as i32,

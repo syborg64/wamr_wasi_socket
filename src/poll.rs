@@ -1,7 +1,7 @@
 use crate::wasi_poll as poll;
 use std::os::fd::{AsRawFd, RawFd};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Subscription {
     Timeout {
         userdata: u64,
