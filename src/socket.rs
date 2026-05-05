@@ -116,7 +116,6 @@ impl Default for SocketAddr {
     }
 }
 
-
 /// __wasi_addr_ip_t {
 ///     i32: kind;
 ///     addr: union { ip4: __wasi_addr_ip4_t, ip6: __wasi_addr_ip6_t}
@@ -165,16 +164,12 @@ mod test {
         );
     }
 
-        #[test]
+    #[test]
     fn test_addr_union_layout() {
         let addr4 = IpAddr::from(&net::IpAddr::from_str("0.0.0.0").unwrap());
-        let IpAddr::V4(ref v4) = addr4 else {
-            panic!()
-        };
+        let IpAddr::V4(ref v4) = addr4 else { panic!() };
         let addr6 = IpAddr::from(&net::IpAddr::from_str("::1").unwrap());
-        let IpAddr::V6(ref v6) = addr6 else {
-            panic!()
-        };
+        let IpAddr::V6(ref v6) = addr6 else { panic!() };
         assert_eq!(
             addr_of!(*v4) as usize,
             addr_of!(addr4) as usize + size_of::<i32>(),
@@ -702,8 +697,7 @@ mod wasi_sock {
         pub fn sock_set_ip_add_membership(fd: i32, addr: *const IpAddr, interface: u32) -> i32;
 
         #[cfg(feature = "opt")]
-        pub fn sock_set_ip_drop_membership(fd: i32, addr: *const IpAddr, interface: u32)
-            -> i32;
+        pub fn sock_set_ip_drop_membership(fd: i32, addr: *const IpAddr, interface: u32) -> i32;
 
         #[cfg(feature = "opt")]
         pub fn sock_set_ip_ttl(fd: i32, opt: u32) -> i32;
@@ -1390,7 +1384,7 @@ impl Socket {
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         Ok(None)
     }
-    
+
     // pub fn take_error(&self) -> io::Result<()> {
     //     unsafe {
     //         let fd = self.fd;
