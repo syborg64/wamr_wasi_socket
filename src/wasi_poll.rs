@@ -34,12 +34,31 @@ pub struct EventFdReadwrite {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct Event {
     pub userdata: Userdata,
     pub error: Errno,
     pub type_: Eventtype,
     pub fd_readwrite: EventFdReadwrite,
+}
+
+impl std::fmt::Debug for Event {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Event")
+            .field("userdata", &self.userdata)
+            .field("error", &self.error)
+            .field(
+                "type:",
+                match self.type_ {
+                    EVENTTYPE_CLOCK => &"EVENTTYPE_CLOCK",
+                    EVENTTYPE_FD_READ => &"EVENTTYPE_FD_READ",
+                    EVENTTYPE_FD_WRITE => &"EVENTTYPE_FD_WRITE",
+                    _ => &"UNRECOGNIZED",
+                },
+            )
+            .field("fd_readwrite", &self.fd_readwrite)
+            .finish()
+    }
 }
 
 impl Event {
@@ -128,7 +147,6 @@ pub unsafe fn poll(
     out: *mut Event,
     nsubscriptions: usize,
 ) -> std::io::Result<usize> {
-    println!("wamr_wasi_socket::poll");
     let mut rp0 = 0u32;
     #[cfg(not(feature = "epoll"))]
     let ret = poll_oneoff(in_, out, nsubscriptions as u32, (&mut rp0) as *mut u32);
