@@ -384,6 +384,10 @@ pub mod addrinfo {
     }
 }
 
+pub type WasiRIFlags = u16;
+pub const SOCK_RECV_PEEK: WasiRIFlags = 0x0001;
+pub const SOCK_RECV_WAITALL: WasiRIFlags = 0x0002;
+
 #[cfg(feature = "addrinfo")]
 pub use addrinfo::*;
 
@@ -516,6 +520,8 @@ mod wasi_sock {
         pub fn sock_accept(socket: i32, flags: u16, fd_new: *mut i32) -> i32;
 
         pub fn sock_connect(socket: i32, addr: *const SocketAddr) -> i32;
+
+        pub fn sock_shutdown(socket: i32, how: i32) -> i32;
 
         #[cfg(feature = "iov")]
         pub fn sock_recv(
@@ -743,6 +749,17 @@ impl Socket {
         } else {
             Ok(ret as _)
         }
+    }
+
+    pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, net::SocketAddr)> {
+        self.recv_from_with_flags(unsafe { std::mem::transmute(buf) }, SOCK_RECV_PEEK)
+            .map(|(a, b, _c)| (a, b))
+    }
+
+    pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
+        Ok(self
+            .recv_with_flags(unsafe { std::mem::transmute(buf) }, SOCK_RECV_PEEK)?
+            .0)
     }
 }
 
@@ -1162,7 +1179,7 @@ impl Socket {
         &self,
         buf: &mut [MaybeUninit<u8>],
         flags: u16,
-    ) -> io::Result<(u32, i32)> {
+    ) -> io::Result<(usize, i32)> {
         let mut recv_len: u32 = 0;
         let mut oflags: i32 = 0;
 
@@ -1174,7 +1191,7 @@ impl Socket {
         unsafe {
             let res = sock_recv(self.as_raw_fd(), &iov, 1, flags, &mut recv_len, &mut oflags);
             if res == 0 {
-                Ok((recv_len, oflags))
+                Ok((recv_len as usize, oflags))
             } else {
                 Err(io::Error::from_raw_os_error(res))
             }
@@ -1237,12 +1254,36 @@ impl Socket {
         }
     }
 
-    // pub fn recv_from_with_flags(
-    //     &self,
-    //     buf: &mut [MaybeUninit<u8>],
-    //     flags: u16,
-    // ) -> io::Result<(usize, SocketAddr, usize)> {
-    // }
+    pub fn recv_from_with_flags(
+        &self,
+        buf: &mut [MaybeUninit<u8>],
+        flags: u16,
+    ) -> io::Result<(usize, net::SocketAddr, usize)> {
+        let mut recv_len: u32 = 0;
+
+        let iov = libc::iovec {
+            iov_base: buf.as_mut_ptr() as *mut _,
+            iov_len: buf.len(),
+        };
+
+        let mut addr = SocketAddr::default();
+
+        let res = unsafe {
+            sock_recv_from(
+                self.as_raw_fd(),
+                &iov as *const _,
+                1,
+                flags,
+                &mut addr,
+                &mut recv_len,
+            )
+        };
+        if res == 0 {
+            Ok((recv_len as usize, (&addr).into(), 0))
+        } else {
+            Err(io::Error::from_raw_os_error(res))
+        }
+    }
 
     pub fn recv_from_vectored(
         &self,
@@ -1368,11 +1409,13 @@ impl Socket {
                 net::Shutdown::Write => 0b10,
                 net::Shutdown::Both => 0b11,
             };
-            let res = libc::shutdown(self.as_raw_fd(), flags);
-            if res == 0 {
+            let res = sock_shutdown(self.as_raw_fd(), flags);
+
+            // wamr has a bug that causes connections shut down by peers to fail with ENOTCONN
+            if res == 0 || res == libc::ENOTCONN {
                 Ok(())
             } else {
-                Err(io::Error::last_os_error())
+                Err(io::Error::from_raw_os_error(res))
             }
         }
     }

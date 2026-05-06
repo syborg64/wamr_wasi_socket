@@ -382,6 +382,10 @@ impl TcpStream {
         Err(last_error)
     }
 
+    pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
+        self.s.peek(buf)
+    }
+
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         self.s.shutdown(how)
     }
