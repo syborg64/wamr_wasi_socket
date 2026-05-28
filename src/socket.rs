@@ -1350,6 +1350,8 @@ impl Socket {
         if res != 0 {
             Err(io::Error::from_raw_os_error(res))
         } else {
+            #[cfg(feature = "opt")]
+            let _ = self.set_linger(None);
             Ok(())
         }
     }
