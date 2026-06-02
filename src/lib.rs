@@ -382,14 +382,18 @@ impl TcpStream {
         Err(last_error)
     }
 
-    pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
-        self.s.peek(buf)
+    pub fn new(s: socket::Socket) -> Self {
+        Self { s }
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         self.s.shutdown(how)
     }
 
+}
+
+#[cfg(feature = "opt")]
+impl TcpStream {
     /// Get peer address.
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         self.s.get_peer()
@@ -406,10 +410,6 @@ impl TcpStream {
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.s.set_nonblocking(nonblocking)
-    }
-
-    pub fn new(s: socket::Socket) -> Self {
-        Self { s }
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
@@ -643,7 +643,10 @@ impl TcpListener {
     pub fn incoming(&self) -> Incoming<'_> {
         Incoming { listener: self }
     }
+}
 
+#[cfg(feature = "opt")]
+impl TcpListener {
     /// Get local address.
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         self.s.get_local()
