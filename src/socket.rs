@@ -750,17 +750,6 @@ impl Socket {
             Ok(ret as _)
         }
     }
-
-    pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, net::SocketAddr)> {
-        self.recv_from_with_flags(unsafe { std::mem::transmute(buf) }, SOCK_RECV_PEEK)
-            .map(|(a, b, _c)| (a, b))
-    }
-
-    pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
-        Ok(self
-            .recv_with_flags(unsafe { std::mem::transmute(buf) }, SOCK_RECV_PEEK)?
-            .0)
-    }
 }
 
 #[cfg(feature = "opt")]
@@ -768,55 +757,6 @@ use std::time::Duration;
 
 #[cfg(feature = "opt")]
 impl Socket {
-    // pub fn device(&self) -> io::Result<Option<Vec<u8>>> {
-    //     let mut buf: [MaybeUninit<u8>; 0x10] = unsafe { MaybeUninit::uninit().assume_init() };
-    //     let mut len = buf.len() as u32;
-    //     let e = unsafe {
-    //         sock_getsockopt(
-    //             self.fd,
-    //             SocketOptLevel::SolSocket as i32,
-    //             SocketOptName::SoBindToDevice as i32,
-    //             &mut buf as *mut _ as *mut i32,
-    //             &mut len,
-    //         )
-    //     };
-
-    //     if e == 0 {
-    //         if len == 0 {
-    //             Ok(None)
-    //         } else {
-    //             let buf = &buf[..len as usize - 1];
-    //             // TODO: use `MaybeUninit::slice_assume_init_ref` once stable.
-    //             Ok(Some(unsafe { &*(buf as *const [_] as *const [u8]) }.into()))
-    //         }
-    //     } else {
-    //         Err(io::Error::from_raw_os_error(e as i32))
-    //     }
-    // }
-
-    // pub fn bind_device(&self, interface: Option<&[u8]>) -> io::Result<()> {
-    //     let (value, len) = if let Some(interface) = interface {
-    //         (interface.as_ptr(), interface.len())
-    //     } else {
-    //         (std::ptr::null(), 0)
-    //     };
-
-    //     unsafe {
-    //         let e = sock_setsockopt(
-    //             self.fd,
-    //             SocketOptLevel::SolSocket as u8 as i32,
-    //             SocketOptName::SoBindToDevice as u8 as i32,
-    //             value as *const i32,
-    //             len as u32,
-    //         );
-    //         if e == 0 {
-    //             Ok(())
-    //         } else {
-    //             Err(io::Error::from_raw_os_error(e as i32))
-    //         }
-    //     }
-    // }
-
     pub fn broadcast(&self) -> io::Result<bool> {
         let mut broadcast = MaybeUninit::<bool>::zeroed();
         mysyscall!(sock_get_broadcast(self.as_raw_fd(), broadcast.as_mut_ptr()))?;
@@ -1421,80 +1361,6 @@ impl Socket {
             }
         }
     }
-}
-
-#[cfg(feature = "opt")]
-impl Socket {
-    #[cfg(feature = "fake")]
-    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        Ok(None)
-    }
-
-    // pub fn take_error(&self) -> io::Result<()> {
-    //     unsafe {
-    //         let fd = self.fd;
-    //         let mut error = 0;
-    //         let mut len = std::mem::size_of::<i32>() as u32;
-    //         let res = sock_getsockopt(
-    //             fd,
-    //             SocketOptLevel::SolSocket as i32,
-    //             SocketOptName::SoError as i32,
-    //             &mut error,
-    //             &mut len,
-    //         );
-    //         if res == 0 && error == 0 {
-    //             Ok(())
-    //         } else if res == 0 && error != 0 {
-    //             Err(io::Error::from_raw_os_error(error))
-    //         } else {
-    //             Err(io::Error::from_raw_os_error(res))
-    //         }
-    //     }
-    // }
-
-    // pub fn is_listener(&self) -> io::Result<bool> {
-    //     unsafe {
-    //         let fd = self.fd;
-    //         let mut val = 0;
-    //         let mut len = std::mem::size_of::<i32>() as u32;
-    //         let res = sock_getsockopt(
-    //             fd as i32,
-    //             SocketOptLevel::SolSocket as i32,
-    //             SocketOptName::SoAcceptconn as i32,
-    //             &mut val,
-    //             &mut len,
-    //         );
-    //         if res != 0 {
-    //             Err(io::Error::from_raw_os_error(res))
-    //         } else {
-    //             Ok(val != 0)
-    //         }
-    //     }
-    // }
-
-    // pub fn r#type(&self) -> io::Result<SocketType> {
-    //     unsafe {
-    //         let fd = self.fd;
-    //         let mut val = 0;
-    //         let mut len = std::mem::size_of::<i32>() as u32;
-    //         let res = sock_getsockopt(
-    //             fd as u32,
-    //             SocketOptLevel::SolSocket as i32,
-    //             SocketOptName::SoType as i32,
-    //             &mut val,
-    //             &mut len,
-    //         );
-    //         if res != 0 {
-    //             Err(io::Error::from_raw_os_error(res))
-    //         } else {
-    //             match val {
-    //                 1 => Ok(SocketType::Datagram),
-    //                 2 => Ok(SocketType::Stream),
-    //                 _ => Err(io::Error::from_raw_os_error(libc::EINVAL)),
-    //             }
-    //         }
-    //     }
-    // }
 }
 
 impl Drop for Socket {

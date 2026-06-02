@@ -326,11 +326,6 @@ pub mod udp {
         pub fn set_ipv6_only(&self, opt: bool) -> io::Result<()> {
             self.s.set_ipv6_only(opt)
         }
-
-        #[cfg(feature = "fake")]
-        pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-            Ok(None)
-        }
     }
 
     impl AsRawFd for UdpSocket {
@@ -666,11 +661,6 @@ impl TcpListener {
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
         self.s.set_ip_ttl(ttl)
-    }
-
-    #[cfg(feature = "fake")]
-    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        Ok(None)
     }
 }
 
