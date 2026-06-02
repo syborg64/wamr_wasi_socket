@@ -560,6 +560,10 @@ impl Read for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.s.recv(buf)
     }
+
+    fn read_vectored(&mut self, bufs: &mut [io::IoSliceMut<'_>]) -> io::Result<usize> {
+        self.s.recv_vectored(bufs, 0).map(|r|r.0)
+    }
 }
 
 impl Write for TcpStream {
@@ -569,11 +573,18 @@ impl Write for TcpStream {
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
+    fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
+        self.s.send_vectored(bufs, 0)
+    }
 }
 
 impl Read for &TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.s.recv(buf)
+    }
+
+    fn read_vectored(&mut self, bufs: &mut [io::IoSliceMut<'_>]) -> io::Result<usize> {
+        self.s.recv_vectored(bufs, 0).map(|r|r.0)
     }
 }
 
@@ -583,6 +594,9 @@ impl Write for &TcpStream {
     }
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+    fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
+        self.s.send_vectored(bufs, 0)
     }
 }
 

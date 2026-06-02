@@ -1403,11 +1403,18 @@ impl std::io::Write for Socket {
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
+    fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
+        self.send_vectored(bufs, 0)   
+    }
 }
 
 impl std::io::Read for Socket {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.recv(buf)
+    }
+
+    fn read_vectored(&mut self, bufs: &mut [io::IoSliceMut<'_>]) -> io::Result<usize> {
+        self.recv_vectored(bufs, 0).map(|r|r.0)
     }
 }
 
@@ -1418,10 +1425,17 @@ impl std::io::Write for &Socket {
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
+    fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
+        self.send_vectored(bufs, 0)   
+    }
 }
 
 impl std::io::Read for &Socket {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.recv(buf)
+    }
+
+    fn read_vectored(&mut self, bufs: &mut [io::IoSliceMut<'_>]) -> io::Result<usize> {
+        self.recv_vectored(bufs, 0).map(|r|r.0)
     }
 }
